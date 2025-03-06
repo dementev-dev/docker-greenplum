@@ -1,0 +1,2 @@
+docker-compose/secrets/*
+!docker-compose/secrets/.gitkeep

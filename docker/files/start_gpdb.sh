@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+gp_init_config_file="${GREENPLUM_DATA_DIRECTORY}/gpinitsystem_config"
+gp_init_host_file="${GREENPLUM_DATA_DIRECTORY}/hostfile_gpinitsystem"
+gp_hostname=$(hostname)
+
+error_and_exit() {
+    echo "ERROR - $1"
+    exit 1
+}
+
+# usage: file_env VAR [DEFAULT]
+#    ie: file_env 'XYZ_DB_PASSWORD' 'example'
+# (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
+#  "$XYZ_DB_PASSWORD" from a file, especially for Docker's secrets feature)
+file_env() {
+    local var="$1"
+    local fileVar="${var}_FILE"
+    local def="${2:-}"
+    if [ "${!var:-}" ] && [ "${!fileVar:-}" ]; then
+        error_and_exit "Both $var and $fileVar are set (but are exclusive)"
+    fi
+    local val="$def"
+    if [ "${!var:-}" ]; then
+        val="${!var}"
+    elif [ "${!fileVar:-}" ]; then
+        val="$(< "${!fileVar}")"
+    fi
+    
+    export "$var"="$val"
+    unset "$fileVar"
+}
+
+setup_version_config() {
+  source "/home/${GREENPLUM_USER}/.bashrc"
+  # Get gpdb major version from gpinitsystem command.
+  # It's necessary to know the version to operate with the correct directories.
+  # Example: gpinitsystem 6.26.4 build dev
+  gp_major_version=$(gpinitsystem --version | cut -d' ' -f2 | cut -d'.' -f1)
+  case ${gp_major_version} in
+    "6")
+      gp_master_dir_name="master"
+      gp_log_dir="pg_log"
+      gp_master_data_dir_prefix="MASTER"
+      ;;
+    "7")
+      gp_master_dir_name="coordinator"
+      gp_log_dir="log"
+      gp_master_data_dir_prefix="COORDINATOR"
+      ;;
+    *)
+      error_and_exit "Invalid Greenplum version: ${gp_major_version}"
+      ;;
+  esac
+}
+
+create_directory() {
+    local dir=$1
+    if [ ! -d "${dir}" ]; then
+        echo "INFO - Creating directory: ${dir}"
+        mkdir -p "${dir}"
+    fi
+}
+
+setup_master() {
+    echo "export MASTER_DATA_DIRECTORY=${GREENPLUM_DATA_DIRECTORY}/master/${GREENPLUM_SEG_PREFIX}-1" >> ~/.bashrc
+    source "/home/${GREENPLUM_USER}/.bashrc"
+    create_directory "${GREENPLUM_DATA_DIRECTORY}/master"
+}
+
+setup_segments() {
+    local segment_num=$1
+    local segment_type=$2
+    create_directory "${GREENPLUM_DATA_DIRECTORY}/${segment_num}/${segment_type}"
+}
+
+verify_prerequisites() {
+    file_env "GREENPLUM_PASSWORD"
+
+    check_required_var "GREENPLUM_DATA_DIRECTORY" "${GREENPLUM_DATA_DIRECTORY}"
+    check_required_var "GREENPLUM_PASSWORD" "${GREENPLUM_PASSWORD}"
+    # Check gpperfmon password only if gpperfmon is enabled for GPDB6 master deployment
+    if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
+       [ "${gp_major_version}" == "6" ] && 
+       [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        file_env "GREENPLUM_GPMON_PASSWORD"
+        check_required_var "GREENPLUM_GPMON_PASSWORD" "${GREENPLUM_GPMON_PASSWORD}"
+    fi
+}
+
+check_required_var() {
+    local var_name=$1
+    local var_value=$2
+    if [ -z "${var_value}" ]; then
+        error_and_exit "${var_name} variable is not set!"
+    fi
+}
+
+generate_gpinitsystem_config() {
+    if [ ! -f "${gp_init_config_file}" ] ; then
+        cat > "${gp_init_config_file}" <<EOF
+ARRAY_NAME="Greenplum in docker"
+DATABASE_NAME=${GREENPLUM_DATABASE_NAME}
+SEG_PREFIX=${GREENPLUM_SEG_PREFIX}
+PORT_BASE=6000
+${gp_master_data_dir_prefix}_HOSTNAME=${gp_hostname}
+${gp_master_data_dir_prefix}_DIRECTORY=${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}
+${gp_master_data_dir_prefix}_PORT=5432
+TRUSTED_SHELL=ssh
+CHECK_POINT_SEGMENTS=8
+ENCODING=UNICODE
+MACHINE_LIST_FILE=${gp_init_host_file}
+declare -a DATA_DIRECTORY=(${GREENPLUM_DATA_DIRECTORY}/00/primary ${GREENPLUM_DATA_DIRECTORY}/01/primary)
+EOF
+    fi
+}
+generate_hostfile_gpinitsystem() {
+    if [ ! -f "${gp_init_host_file}" ] ; then
+        echo "${gp_hostname}" > ${gp_init_host_file}
+    fi
+}
+
+initialize_and_start_gpdb() {
+    local pg_hba="${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/pg_hba.conf"
+
+    # Scan and add host keys
+    for host in $(cat ${gp_init_host_file}); do
+        ssh-keyscan $host >> /home/${GREENPLUM_USER}/.ssh/known_hosts 2>/dev/null
+    done
+    chmod 644 /home/${GREENPLUM_USER}/.ssh/known_hosts
+
+    # Fetch ssh keys from hosts
+    gpssh-exkeys -f "${gp_init_host_file}"
+    
+    if [ -f "${pg_hba}" ]; then
+	    echo 'INFO - Start GPDB'
+	    gpstart -a
+    else
+        # Init gpdb
+        echo "INFO - Initialize GPDB"
+        gpinitsystem -e "${GREENPLUM_PASSWORD}" --ignore-warnings -ac "${gp_init_config_file}"
+        # Enable gpperfmon
+        if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+            echo "INFO - Enable gpperfmon"
+            USER=${GREENPLUM_USER} gpperfmon_install --enable --password "${GREENPLUM_GPMON_PASSWORD}" --port 5432
+            # Necessary to correct start gpsmon process. Without this, in some cases, the process is not started
+            echo "verbose=1" >> ${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/gpperfmon/conf/gpperfmon.conf
+            # Configure  gp_interconnect_type  to TCP
+            # Without this in docker the error for gpsmon could be raised:
+            # "send dummy packet failed, sendto failed: Cannot assign requested address",,,,,,,0,,"ic_udpifc.c",7020,
+            echo "INFO -  USER=${GREENPLUM_USER} gpconfig -c gp_interconnect_type -v tcp"
+            USER=${GREENPLUM_USER} gpconfig -c gp_interconnect_type -v tcp
+        fi
+        if [ "${GREENPLUM_DISKQUOTA_ENABLE}" == "true" ]; then
+            echo "INFO - Enable diskquota"
+            echo "INFO - createdb diskquota"
+            createdb "diskquota"
+            # Get current shared_preload_libraries value
+            echo "INFO - psql template1 -t -c \"SHOW shared_preload_libraries\" | xargs"
+            gp_shared_preload_libraries=$(psql template1 -t -c "SHOW shared_preload_libraries" | xargs)
+            # Get available diskquota version
+            echo "INFO - psql template1 -t -c \"SELECT default_version FROM pg_available_extensions WHERE name = 'diskquota'\" | xargs"
+            gp_diskquota_version=$(psql template1 -t -c "SELECT default_version FROM pg_available_extensions WHERE name = 'diskquota'" | xargs)
+            # Add diskquota to shared_preload_libraries
+            if [ -z "${gp_shared_preload_libraries}" ]; then
+                echo "INFO - gpconfig -c shared_preload_libraries -v \"diskquota-${gp_diskquota_version}\""
+                USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "diskquota-${gp_diskquota_version}"
+            else
+                echo "INFO - gpconfig -c shared_preload_libraries -v \"'$gp_shared_preload_libraries,diskquota-${gp_diskquota_version}'\""
+                USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "'$shared_preload_libraries,diskquota-${gp_diskquota_version}'"
+            fi
+        fi
+        # Configure pg_hba
+        echo "INFO - Configure pg_hba.conf"
+        {
+            echo "host all all 0.0.0.0/0 md5"
+            echo "host all all ::0/0 md5"
+        } >> "${pg_hba}"
+        echo "INFO - Restart GPDB"
+        gpstop -ar
+        sleep 10
+    fi
+    # If db name is set and diskquota is enabled, create extension and init table size table
+    if [ "${GREENPLUM_DISKQUOTA_ENABLE}" == "true" ] && [ -n "${GREENPLUM_DATABASE_NAME:-}" ]; then
+        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION diskquota;\" | xargs"
+        psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION diskquota;" | xargs
+        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"SELECT diskquota.init_table_size_table();\" | xargs"
+        psql ${GREENPLUM_DATABASE_NAME} -t -c "SELECT diskquota.init_table_size_table();" | xargs
+    fi
+    # Enable PXF
+    if [ ${GREENPLUM_PXF_ENABLE} == "true" ] && [ "${gp_major_version}" == "6" ]; then
+        echo "INFO - Enable PXF"
+        pxf cluster prepare
+        pxf cluster register
+        pxf cluster start
+        sleep 10
+        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION pxf;\" | xargs"
+        psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION pxf;" | xargs
+    fi
+    # Monitor logs
+    trap "kill %1; gpstop -a -M fast && END=1" INT TERM
+    tail -f $(ls ${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/${gp_log_dir}/gpdb-* | tail -n1) &
+
+    #trap
+    while [ "$END" == '' ]; do
+        sleep 1
+    done
+}
+
+case ${GREENPLUM_DEPLOYMENT} in
+    "singlenode")
+        setup_version_config
+        verify_prerequisites
+        setup_master
+        setup_segments "00" "primary"
+        setup_segments "01" "primary"
+        generate_gpinitsystem_config
+        generate_hostfile_gpinitsystem
+        initialize_and_start_gpdb
+        ;;
+    "master")
+        setup_version_config
+        verify_prerequisites
+        setup_master
+        generate_gpinitsystem_config
+        initialize_and_start_gpdb
+        ;;
+    "segment")
+        for arg in "$@"; do
+            IFS=':' read -r segment_num segment_type <<< "$arg"
+            setup_segments "$segment_num" "$segment_type"
+        done
+        trap "echo 'INFO - Shutdown segment host' && END=1" TERM INT
+        # Keep container running
+        while [ "$END" == '' ]; do
+            sleep 1
+        done
+        ;;
+    *)
+        error_and_exit "Invalid deployment mode: ${GREENPLUM_DEPLOYMENT}"
+        ;;
+esac
