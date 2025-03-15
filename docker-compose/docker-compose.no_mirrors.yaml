@@ -27,7 +27,6 @@ services:
       - ./conf/hostfile_gpinitsystem:/data/hostfile_gpinitsystem
       - ./conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
       - ./conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
-      - ../docker/files/start_gpdb.sh:/start_gpdb.sh
     depends_on:
       - segment1
       - segment2
@@ -44,7 +43,6 @@ services:
     volumes:
       # - gpdb-segment1-data:/data
       - ./conf/ssh/authorized_keys:/home/gpadmin/.ssh/authorized_keys
-      - ../docker/files/start_gpdb.sh:/start_gpdb.sh
     stop_grace_period: 60s
     networks:
       - greenplum
@@ -59,7 +57,6 @@ services:
     volumes:
       # - gpdb-segment2-data:/data
       - ./conf/ssh/authorized_keys:/home/gpadmin/.ssh/authorized_keys
-      - ../docker/files/start_gpdb.sh:/start_gpdb.sh
     stop_grace_period: 60s
     networks:
       - greenplum
