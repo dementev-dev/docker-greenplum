@@ -82,17 +82,17 @@ echo "changeme" > docker-compose/secrets/gpmon_password
 
 Run  cluster with 1 master and 2 segments without mirroring:
 ```bash
-docker compose -f ./docker-compose/docker-compose.no-mirroring.yml up -d
+docker compose -f ./docker-compose/docker-compose.no-mirroring.yaml up -d
 ```
 
 Run cluster with persistent storage:
 ```bash
-docker compose -f ./docker-compose/docker-compose.no_mirrors_persistent.yml up -d
+docker compose -f ./docker-compose/docker-compose.no_mirrors_persistent.yaml up -d
 ```
 
 Run cluster with 1 master and 2 segments with mirroring:
 ```bash
-docker compose -f ./docker-compose/docker-compose.mirroring.yml up -d
+docker compose -f ./docker-compose/docker-compose.mirroring.yaml up -d
 ```
 
 ## Build
