@@ -286,9 +286,9 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc \
     && echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /home/${GREENPLUM_USER}/.bashrc \
     && echo 'export PATH="/usr/local/pxf/bin:${PATH}"' >> /home/${GREENPLUM_USER}/.bashrc \
-    && echo "export PXF_BASE=/home/${GREENPLUM_USER}/pxf" >> /home/${GREENPLUM_USER}/.bashrc \
+    && echo "export PXF_BASE=${GREENPLUM_DATA_DIRECTORY}/pxf" >> /home/${GREENPLUM_USER}/.bashrc \
     && mkdir -p ${GREENPLUM_DATA_DIRECTORY} \
-                /home/${GREENPLUM_USER}/pxf \
+                ${GREENPLUM_DATA_DIRECTORY}/pxf \
     && chown -R ${GREENPLUM_USER}:${GREENPLUM_GROUP} \
         /home/${GREENPLUM_USER}/ \
         ${GREENPLUM_DATA_DIRECTORY} \

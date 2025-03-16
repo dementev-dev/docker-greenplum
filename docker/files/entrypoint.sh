@@ -19,7 +19,7 @@ if [ "${uid}" = "0" ]; then
         echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc
         echo "export JAVA_HOME=/${java_home_path}" >> /home/${GREENPLUM_USER}/.bashrc
         echo 'export PATH="/usr/local/pxf/bin:${PATH}"' >> /home/${GREENPLUM_USER}/.bashrc
-        echo "export PXF_BASE=/home/${GREENPLUM_USER}/pxf" >> /home/${GREENPLUM_USER}/.bashrc
+        echo "export PXF_BASE=${GREENPLUM_DATA_DIRECTORY}/pxf" >> /home/${GREENPLUM_USER}/.bashrc
         mkdir -m 700 -p /home/${GREENPLUM_USER}/.ssh
         mkdir -p /home/${GREENPLUM_USER}/pxf
         ssh-keygen -q -f /home/${GREENPLUM_USER}/.ssh/id_rsa -t rsa -N ""

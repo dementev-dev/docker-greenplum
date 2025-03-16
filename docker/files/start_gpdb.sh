@@ -123,6 +123,7 @@ generate_hostfile_gpinitsystem() {
 
 initialize_and_start_gpdb() {
     local pg_hba="${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/pg_hba.conf"
+    local pxf_env="${PXF_BASE}/conf/pxf-env.sh"
 
     # Scan and add host keys
     for host in $(cat ${gp_init_host_file}); do
@@ -134,6 +135,17 @@ initialize_and_start_gpdb() {
     gpssh-exkeys -f "${gp_init_host_file}"
     
     if [ -f "${pg_hba}" ]; then
+        # In case when we use persistent volume and data catalog is already exists
+        # we need to configure .pgpass file for gpperfmon before starting GPDB
+        # Otherwise, we get error:
+        # 3rd party error log: Performance Monitor - failed to connect to gpperfmon database: fe_sendauth: no password supplied
+        if [ ! -f "/home/${GREENPLUM_USER}/.pgpass" ] &&
+           [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
+           [ "${gp_major_version}" == "6" ] && 
+           [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+            echo "*:5432:gpperfmon:gpmon:${GREENPLUM_GPMON_PASSWORD}" > /home/${GREENPLUM_USER}/.pgpass
+            chmod 600 /home/${GREENPLUM_USER}/.pgpass
+        fi
 	    echo 'INFO - Start GPDB'
 	    gpstart -a
     else
@@ -141,7 +153,8 @@ initialize_and_start_gpdb() {
         echo "INFO - Initialize GPDB"
         gpinitsystem -e "${GREENPLUM_PASSWORD}" --ignore-warnings -ac "${gp_init_config_file}"
         # Enable gpperfmon
-        if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
+           [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
             echo "INFO - Enable gpperfmon"
             USER=${GREENPLUM_USER} gpperfmon_install --enable --password "${GREENPLUM_GPMON_PASSWORD}" --port 5432
             # Necessary to correct start gpsmon process. Without this, in some cases, the process is not started
@@ -183,23 +196,31 @@ initialize_and_start_gpdb() {
     fi
     # If db name is set and diskquota is enabled, create extension and init table size table
     if [ "${GREENPLUM_DISKQUOTA_ENABLE}" == "true" ] && [ -n "${GREENPLUM_DATABASE_NAME:-}" ]; then
-        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION diskquota;\" | xargs"
-        psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION diskquota;" | xargs
+        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION IF NOT EXISTS diskquota;\" | xargs"
+        psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION IF NOT EXISTS diskquota;" | xargs
         echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"SELECT diskquota.init_table_size_table();\" | xargs"
         psql ${GREENPLUM_DATABASE_NAME} -t -c "SELECT diskquota.init_table_size_table();" | xargs
     fi
     # Enable PXF
     if [ ${GREENPLUM_PXF_ENABLE} == "true" ] && [ "${gp_major_version}" == "6" ]; then
-        echo "INFO - Enable PXF"
-        pxf cluster prepare
-        pxf cluster register
+        if [ ! -f "${pxf_env}" ]; then
+            echo "INFO - Enable PXF"
+            pxf cluster prepare
+            pxf cluster register
+            echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION IF NOT EXISTS pxf;\" | xargs"
+            psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION IF NOT EXISTS pxf;" | xargs
+        fi
+        echo "INFO - pxf cluster start"
         pxf cluster start
         sleep 10
-        echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION pxf;\" | xargs"
-        psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION pxf;" | xargs
     fi
     # Monitor logs
-    trap "kill %1; gpstop -a -M fast && END=1" INT TERM
+     trap "kill %1; \
+         if [ ${GREENPLUM_PXF_ENABLE} == 'true' ] && [ -f '${pxf_env}' ]; then \
+             echo 'INFO - Stop PXF cluster'; \
+             pxf cluster stop; \
+         fi; \
+         gpstop -a -M fast && END=1" INT TERM
     tail -f $(ls ${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/${gp_log_dir}/gpdb-* | tail -n1) &
 
     #trap
