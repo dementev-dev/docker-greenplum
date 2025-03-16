@@ -56,7 +56,7 @@ You will need to mount the necessary directories or files inside the container (
 ### Simple
 
 ```bash
-docker run -p 5432:5432 -e GRENPLUM_PASSWROD=gparray -d greenplum:6.27.1
+docker run -p 5432:5432 -e GREENPLUM_PASSWORD=gparray -d greenplum:6.27.1
 ```
 
 Connect to Greenplum:
@@ -70,7 +70,7 @@ As an alternative to passing sensitive information via environment variables, `_
 
 For example:
 ```bash
-docker run -p 5432:5432 -e GRENPLUM_PASSWROD_FILE=/run/secrets/gpdb_password -d greenplum:6.27.1
+docker run -p 5432:5432 -e GREENPLUM_PASSWORD_FILE=/run/secrets/gpdb_password -d greenplum:6.27.1
 ```
 
 ### Docker Compose
