@@ -43,6 +43,7 @@ setup_version_config() {
       gp_master_dir_name="master"
       gp_log_dir="pg_log"
       gp_master_data_dir_prefix="MASTER"
+
       ;;
     "7")
       gp_master_dir_name="coordinator"
@@ -64,9 +65,9 @@ create_directory() {
 }
 
 setup_master() {
-    echo "export MASTER_DATA_DIRECTORY=${GREENPLUM_DATA_DIRECTORY}/master/${GREENPLUM_SEG_PREFIX}-1" >> ~/.bashrc
+    echo "export ${gp_master_data_dir_prefix}_DATA_DIRECTORY=${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1" >> ~/.bashrc
     source "/home/${GREENPLUM_USER}/.bashrc"
-    create_directory "${GREENPLUM_DATA_DIRECTORY}/master"
+    create_directory "${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}"
 }
 
 setup_segments() {
@@ -151,7 +152,11 @@ initialize_and_start_gpdb() {
     else
         # Init gpdb
         echo "INFO - Initialize GPDB"
-        gpinitsystem -e "${GREENPLUM_PASSWORD}" --ignore-warnings -ac "${gp_init_config_file}"
+        if [ "${gp_major_version}" == "6" ]; then
+            gpinitsystem -e ${GREENPLUM_PASSWORD} -ac ${gp_init_config_file} --ignore-warnings
+        else
+            gpinitsystem -e ${GREENPLUM_PASSWORD} -ac ${gp_init_config_file}
+        fi
         # Enable gpperfmon
         if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
            [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
