@@ -1,6 +1,7 @@
 # docker-greenplum
 
-[![Actions Status](https://github.com/woblerr/docker-greenplum/workflows/build/badge.svg)](https://github.com/woblerr/docker-greenplum/actions)
+[![build-gpdb6](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb6.yml/badge.svg)](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb6.yml)
+[![build-gpdb7](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb7.yml/badge.svg)](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb7.yml)
 
 This project provides a Docker image for running Greenplum Database (GPDB) in containers. It supports both single-node and multi-node deployments. The image can be use for development, testing, and learning purposes.
 
@@ -8,12 +9,15 @@ The Greenplum in docker provides the following features:
 - single-node deployment;
 - master and segments deployment;
 - support for segment mirroring;
-- gpperfmon;
+- gpperfmon (GPDB 6 only);
 - diskquota;
 - gpbackup/gprestore;
 - gpbackup-s3-plugin;
 - gpbackman;
 - PXF (Platform Extension Framework).
+
+For information about supported builds, see [Build matrix](#build-matrix).
+For specific version, you can build your own image using the [Build](#build) section.
 
 Environment variables supported by this image:
 
@@ -26,7 +30,7 @@ Environment variables supported by this image:
 * `GREENPLUM_DATA_DIRECTORY` - Greenplum data directory location, default `/data`;
 * `GREENPLUM_SEG_PREFIX` - Greenplum segment prefix, default `gpseg`;
 * `GREENPLUM_DATABASE_NAME` - Greenplum database name, default `demo`, this database will be created during the initialization;
-* `GREENPLUM_GPPERFMON_ENABLE` - enable gpperfmon, default `false`;
+* `GREENPLUM_GPPERFMON_ENABLE` - enable gpperfmon (GPDB 6 only), default `false`;
 * `GREENPLUM_DISKQUOTA_ENABLE` - enable diskquota, default `false`;
 * `GREENPLUM_PXF_ENABLE` - enable PXF, default `false`;
 
@@ -97,6 +101,34 @@ docker compose -f ./docker-compose/docker-compose.mirroring.yaml up -d
 
 ## Build
 
+Simple build:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile -t greenplum:6.27.1 .
 ```
+
+Build with specific version:
+```bash
+docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 -t greenplum:6.27.1 .
+```
+
+Build with specific version for components:
+```bash
+docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
+```
+
+## Build matrix
+
+Supported Greenplum version tags.
+
+Greenplum 6:
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
+|---|---|---|
+| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | TODO |
+| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | TODO |
+| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | TODO |
+
+Greenplum 7:
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
+|---|---|---|
+| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | TODO |
+| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | TODO |

@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         greenplum_version: ["7.0.0", "7.1.0"]
+        os_version: ["ubuntu22.04"]
     steps:
     - uses: actions/checkout@v4
 
@@ -35,17 +36,18 @@ jobs:
     - name: Build greenplum image
       run: |
         docker buildx build \
-          -f docker/ubuntu/7/Dockerfile \
+          -f docker/${OS_TAG}/7/Dockerfile \
           --platform ${BUILD_PLATFORMS} \
           --build-arg GPDB_VERSION=${TAG} \
           --build-arg REPO_BUILD_TAG=${REPO_TAG} \
           -t greenplum:${TAG} .
       env: 
         TAG: ${{ matrix.greenplum_version }}
+        OS_TAG: ${{ matrix.os_version }}
         REPO_TAG: ${{ steps.vars.outputs.repo_tag }}
         BUILD_PLATFORMS: ${{ env.build_platforms }}
 
-    - name: Build image and push tag to ghcr.io and Docker Hub
+    - name: Build image on Ubuntu 22.04 and push tag to ghcr.io and Docker Hub
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       run: |
         echo ${GITHUB_PKG} | docker login ghcr.io -u ${GITHUB_USER} --password-stdin
@@ -56,14 +58,19 @@ jobs:
             --build-arg GPDB_VERSION=${TAG} \
             --build-arg REPO_BUILD_TAG=${REPO_TAG} \
             -t ghcr.io/${GITHUB_USER}/greenplum:${TAG} \
+            -t ghcr.io/${GITHUB_USER}/greenplum:${TAG}-${OS_TAG} \
             -t ghcr.io/${GITHUB_USER}/greenplum:${TAG}-${REPO_TAG} \
+            -t ghcr.io/${GITHUB_USER}/greenplum:${TAG}-${OS_TAG}-${REPO_TAG} \
             -t ${DOCKERHUB_USER}/greenplum:${TAG} \
+            -t ${DOCKERHUB_USER}/greenplum:${TAG}-${OS_TAG} \
             -t ${DOCKERHUB_USER}/greenplum:${TAG}-${REPO_TAG} .
+            -t ${DOCKERHUB_USER}/greenplum:${TAG}-${OS_TAG}-${REPO_TAG} .
       env:
         GITHUB_USER: ${{ github.actor }}
         GITHUB_PKG: ${{ secrets.GUTHUB_CR_PAT }}
         DOCKERHUB_USER: ${{ secrets.DOCKEHUB_USER }}
         DOCKERHUB_PKG: ${{ secrets.DOCKEHUB_TOKEN }}
         TAG: ${{ matrix.greenplum_version }}
+        OS_TAG: ${{ matrix.os_version[0] }}
         REPO_TAG: ${{ steps.vars.outputs.repo_tag }}
         BUILD_PLATFORMS: ${{ env.build_platforms }}
