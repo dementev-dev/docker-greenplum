@@ -39,7 +39,7 @@ jobs:
     - name: Build greenplum image
       run: |
         docker buildx build \
-          -f docker/ubuntu/6/Dockerfile \
+          -f docker/${OS_TAG}/6/Dockerfile \
           --platform ${BUILD_PLATFORMS} \
           --build-arg GPDB_VERSION=${TAG} \
           --build-arg REPO_BUILD_TAG=${REPO_TAG} \
@@ -56,7 +56,7 @@ jobs:
         echo ${GITHUB_PKG} | docker login ghcr.io -u ${GITHUB_USER} --password-stdin
         echo ${DOCKERHUB_PKG} | docker login -u ${DOCKERHUB_USER} --password-stdin
         docker buildx build \
-            -f docker/ubuntu/6/Dockerfile \
+            -f docker/${OS_TAG}/6/Dockerfile \
             --platform ${BUILD_PLATFORMS} \
             --build-arg GPDB_VERSION=${TAG} \
             --build-arg REPO_BUILD_TAG=${REPO_TAG} \
