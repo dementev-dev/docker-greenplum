@@ -1,4 +1,4 @@
-name: build
+name: build-gpdb6
 
 on: [push, pull_request]
 
