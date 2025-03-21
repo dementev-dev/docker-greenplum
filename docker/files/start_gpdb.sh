@@ -207,7 +207,7 @@ initialize_and_start_gpdb() {
         psql ${GREENPLUM_DATABASE_NAME} -t -c "SELECT diskquota.init_table_size_table();" | xargs
     fi
     # Enable PXF
-    if [ ${GREENPLUM_PXF_ENABLE} == "true" ] && [ "${gp_major_version}" == "6" ]; then
+    if [ ${GREENPLUM_PXF_ENABLE} == "true" ]; then
         if [ ! -f "${pxf_env}" ]; then
             echo "INFO - Enable PXF"
             pxf cluster prepare
