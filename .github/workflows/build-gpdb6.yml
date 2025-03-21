@@ -66,7 +66,7 @@ jobs:
             -t ghcr.io/${GITHUB_USER}/greenplum:${TAG}-${OS_TAG}-${REPO_TAG} \
             -t ${DOCKERHUB_USER}/greenplum:${TAG} \
             -t ${DOCKERHUB_USER}/greenplum:${TAG}-${OS_TAG} \
-            -t ${DOCKERHUB_USER}/greenplum:${TAG}-${REPO_TAG} .
+            -t ${DOCKERHUB_USER}/greenplum:${TAG}-${REPO_TAG} \
             -t ${DOCKERHUB_USER}/greenplum:${TAG}-${OS_TAG}-${REPO_TAG} .
       env:
         GITHUB_USER: ${{ github.actor }}
