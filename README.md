@@ -39,7 +39,7 @@ Required environment variables:
 * `GREENPLUM_GPMON_PASSWORD` - password for `gpmon` user, **required** when `GREENPLUM_GPPERFMON_ENABLE` is `true`;
 
 ## Pull
-Change `tag` to to the version you need.
+Change `tag` to the version you need.
 
 * Docker Hub:
 
@@ -86,7 +86,7 @@ echo "changeme" > docker-compose/secrets/gpmon_password
 
 Run  cluster with 1 master and 2 segments without mirroring:
 ```bash
-docker compose -f ./docker-compose/docker-compose.no-mirroring.yaml up -d
+docker compose -f ./docker-compose/docker-compose.no_mirrors.yaml up -d
 ```
 
 Run cluster with persistent storage:
@@ -96,24 +96,24 @@ docker compose -f ./docker-compose/docker-compose.no_mirrors_persistent.yaml up 
 
 Run cluster with 1 master and 2 segments with mirroring:
 ```bash
-docker compose -f ./docker-compose/docker-compose.mirroring.yaml up -d
+docker compose -f ./docker-compose/docker-compose.with_mirrors.yaml up -d
 ```
 
 ## Build
 
 Simple build:
 ```bash
-docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile -t greenplum:6.27.1 .
+docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile -t greenplum:6.27.1 .
 ```
 
 Build with specific version:
 ```bash
-docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 -t greenplum:6.27.1 .
+docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 -t greenplum:6.27.1 .
 ```
 
 Build with specific version for components:
 ```bash
-docker buildx build --platform linux/amd64 -f docker/ubuntu/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
+docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
 ```
 
 ## Build matrix
