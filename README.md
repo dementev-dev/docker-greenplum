@@ -123,9 +123,9 @@ Supported Greenplum version tags.
 Greenplum 6:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
 |---|---|---|
-| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | TODO |
-| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | TODO |
-| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | TODO |
+| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` |
+| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` |
+| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` |
 
 Greenplum 7:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 

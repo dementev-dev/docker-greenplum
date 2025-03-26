@@ -128,7 +128,7 @@ initialize_and_start_gpdb() {
 
     # Scan and add host keys
     for host in $(cat ${gp_init_host_file}); do
-        ssh-keyscan $host >> /home/${GREENPLUM_USER}/.ssh/known_hosts 2>/dev/null
+        ssh-keyscan -t rsa $host >> /home/${GREENPLUM_USER}/.ssh/known_hosts 2>/dev/null
     done
     chmod 644 /home/${GREENPLUM_USER}/.ssh/known_hosts
 
@@ -214,6 +214,11 @@ initialize_and_start_gpdb() {
             pxf cluster register
             echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION IF NOT EXISTS pxf;\" | xargs"
             psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION IF NOT EXISTS pxf;" | xargs
+            echo "INFO - configure JVM options for PXF"
+            # Minimaze JVM memory for PXF.
+            # For docker default is too big.
+            echo 'PXF_JVM_OPTS="-Xmx512m -Xms256m"' >> ${pxf_env}
+            pxf cluster sync
         fi
         echo "INFO - pxf cluster start"
         pxf cluster start
