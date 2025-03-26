@@ -174,9 +174,14 @@ ARG PXF_DOWNLOAD_URL
 ARG PXF_VERSION
 
 RUN mkdir -p /opt/go \
-    && ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "amd64" || echo "$(uname -m)") \
-    && wget https://go.dev/dl/go${GOLANG_VERSION}.linux-${ARCH}.tar.gz \
-    && tar -xvf go${GOLANG_VERSION}.linux-${ARCH}.tar.gz -C /usr/local
+    && arch="$(uname -m)" \
+    && case "${arch}" in \
+        aarch64) dpkgArch='arm64' ;; \
+        x86_64) dpkgArch='amd64' ;; \
+        *) echo >&2 "error: unknown/unsupported architecture '${arch}'"; exit 1 ;; \
+    esac \
+    && wget https://go.dev/dl/go${GOLANG_VERSION}.linux-${dpkgArch}.tar.gz \
+    && tar -xvf go${GOLANG_VERSION}.linux-${dpkgArch}.tar.gz -C /usr/local
 
 ENV PATH="$PATH:/usr/local/go/bin"
 ENV GOPATH=/opt/go
@@ -292,25 +297,24 @@ RUN dnf -y update \
 # Grab gosu for easy step-down from root
 # https://github.com/tianon/gosu/releases
 # https://github.com/tianon/gosu/blob/master/INSTALL.md
-RUN set -eux; \
-        arch="$(uname -m)"; \
-        case "${arch}" in \
+RUN arch="$(uname -m)" \
+    && case "${arch}" in \
             aarch64) dpkgArch='arm64' ;; \
             x86_64) dpkgArch='amd64' ;; \
             *) echo >&2 "error: unknown/unsupported architecture '${arch}'"; exit 1 ;; \
-        esac; \
-        wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}"; \
-        wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}.asc"; \
-        # Verify the signature
-        export GNUPGHOME="$(mktemp -d)"; \
-        gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
-        gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
-        gpgconf --kill all; \
-        rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc; \
-        chmod +x /usr/local/bin/gosu; \
-        # Verify that the binary works
-        gosu --version; \
-        gosu nobody true
+        esac \
+    && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}" \
+    && wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}.asc" \
+    # Verify the signature
+    && export GNUPGHOME="$(mktemp -d)" \
+    && gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
+    && gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
+    && gpgconf --kill all \
+    && rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc \
+    && chmod +x /usr/local/bin/gosu \
+    # Verify that the binary works
+    && gosu --version \
+    && gosu nobody true
 
 RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && useradd --shell /bin/bash --uid ${GREENPLUM_UID} --gid ${GREENPLUM_GID} -m ${GREENPLUM_USER} \
