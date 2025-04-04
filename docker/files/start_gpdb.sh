@@ -76,6 +76,19 @@ setup_segments() {
     create_directory "${GREENPLUM_DATA_DIRECTORY}/${segment_num}/${segment_type}"
 }
 
+# Resolve issue for GPDB 7 with mounted authorized_keys in docker
+# In GPDB 7, gpssh-exkeys use rsync to copy the authorized_keys
+# and we get error:
+#   rsync: rename "/home/gpadmin/.ssh/.authorized_keys.wiHHYt" -> "authorized_keys": Device or resource busy (16)
+# For GPDB 6 the problem is not reproduced, because the scp command is used.
+setup_segment_authorized_keys(){
+    if [ -f /tmp/authorized_keys ]; then
+        echo "INFO - Copy authorized_keys to /home/${GREENPLUM_USER}/.ssh/authorized_keys"
+        cp /tmp/authorized_keys /home/${GREENPLUM_USER}/.ssh/authorized_keys
+        chmod 600 /home/${GREENPLUM_USER}/.ssh/authorized_keys
+    fi
+}
+
 verify_prerequisites() {
     file_env "GREENPLUM_PASSWORD"
 
@@ -132,9 +145,9 @@ initialize_and_start_gpdb() {
     done
     chmod 644 /home/${GREENPLUM_USER}/.ssh/known_hosts
 
-    # Fetch ssh keys from hosts
+    # Fetch rsa ssh keys from hosts
     gpssh-exkeys -f "${gp_init_host_file}"
-    
+
     if [ -f "${pg_hba}" ]; then
         # In case when we use persistent volume and data catalog is already exists
         # we need to configure .pgpass file for gpperfmon before starting GPDB
@@ -258,6 +271,7 @@ case ${GREENPLUM_DEPLOYMENT} in
         initialize_and_start_gpdb
         ;;
     "segment")
+        setup_segment_authorized_keys
         for arg in "$@"; do
             IFS=':' read -r segment_num segment_type <<< "$arg"
             setup_segments "$segment_num" "$segment_type"

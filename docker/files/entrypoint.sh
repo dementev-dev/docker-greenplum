@@ -32,7 +32,7 @@ fi
 
 # Start SSH server.
 if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-    ssh-keygen -q -f /etc/ssh/ssh_host_rsa_key -t rsa -N ""
+    ssh-keygen -A
 fi
 mkdir -p /run/sshd
 /usr/sbin/sshd

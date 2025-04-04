@@ -130,5 +130,5 @@ Greenplum 6:
 Greenplum 7:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
 |---|---|---|
-| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | TODO |
-| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | TODO |
+| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |
+| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |
