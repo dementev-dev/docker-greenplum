@@ -78,12 +78,36 @@ docker run -p 5432:5432 -e GREENPLUM_PASSWORD_FILE=/run/secrets/gpdb_password -d
 ```
 
 ### Docker Compose
+#### Prepare
+
 Prepare password files (**set your own passwords**):
 ```bash
 echo "gparray" > docker-compose/secrets/gpdb_password
 echo "changeme" > docker-compose/secrets/gpmon_password
 ```
 
+For correct start docker compose, configs should be mounted to `/tmp`.
+It's valid for `gpinitsystem_config`, `hostfile_gpinitsystem` and `authorized_keys` files.
+
+SSH rsa keys should be mounted to `/home/gpadmin/.ssh/` directory.
+
+Master mounts:
+```yaml
+    volumes:
+      - ./conf/${CONFIG_FOLDER}/gpinitsystem_config_no_mirrors:/tmp/gpinitsystem_config
+      - ./conf/hostfile_gpinitsystem:/tmp/hostfile_gpinitsystem
+      - ./conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
+      - ./conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
+```
+Segments mounts:
+```yaml
+    volumes:
+       - ./conf/ssh/authorized_keys:/tmp/authorized_keys
+```
+
+The image version and `CONFIG_FOLDER` variable should be set in the `.env` file. See the example `.env` file in the `docker-compose` directory.
+
+#### Run
 Run  cluster with 1 master and 2 segments without mirroring:
 ```bash
 docker compose -f ./docker-compose/docker-compose.no_mirrors.yaml up -d
