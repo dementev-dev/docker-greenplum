@@ -3,6 +3,7 @@ set -eo pipefail
 
 gp_init_config_file="${GREENPLUM_DATA_DIRECTORY}/gpinitsystem_config"
 gp_init_host_file="${GREENPLUM_DATA_DIRECTORY}/hostfile_gpinitsystem"
+gp_master_dir_name="master"
 gp_hostname=$(hostname)
 
 error_and_exit() {
@@ -40,13 +41,11 @@ setup_version_config() {
   gp_major_version=$(gpinitsystem --version | cut -d' ' -f2 | cut -d'.' -f1)
   case ${gp_major_version} in
     "6")
-      gp_master_dir_name="master"
       gp_log_dir="pg_log"
       gp_master_data_dir_prefix="MASTER"
 
       ;;
     "7")
-      gp_master_dir_name="coordinator"
       gp_log_dir="log"
       gp_master_data_dir_prefix="COORDINATOR"
       ;;
@@ -111,6 +110,13 @@ check_required_var() {
     fi
 }
 
+setup_gpinitsystem_config(){
+    if [ -f /tmp/gpinitsystem_config ]; then
+        echo "INFO - Copy gpinitsystem_config to ${gp_init_config_file}"
+        cp /tmp/gpinitsystem_config "${gp_init_config_file}"
+    fi
+}
+
 generate_gpinitsystem_config() {
     if [ ! -f "${gp_init_config_file}" ] ; then
         cat > "${gp_init_config_file}" <<EOF
@@ -129,6 +135,14 @@ declare -a DATA_DIRECTORY=(${GREENPLUM_DATA_DIRECTORY}/00/primary ${GREENPLUM_DA
 EOF
     fi
 }
+
+setup_hostfile_gpinitsystem(){
+    if [ -f /tmp/hostfile_gpinitsystem ]; then
+        echo "INFO - Copy hostfile_gpinitsystem to ${gp_init_host_file}"
+        cp /tmp/hostfile_gpinitsystem "${gp_init_host_file}"
+    fi
+}
+
 generate_hostfile_gpinitsystem() {
     if [ ! -f "${gp_init_host_file}" ] ; then
         echo "${gp_hostname}" > ${gp_init_host_file}
@@ -259,7 +273,9 @@ case ${GREENPLUM_DEPLOYMENT} in
         setup_master
         setup_segments "00" "primary"
         setup_segments "01" "primary"
+        setup_gpinitsystem_config
         generate_gpinitsystem_config
+        setup_hostfile_gpinitsystem
         generate_hostfile_gpinitsystem
         initialize_and_start_gpdb
         ;;
@@ -267,6 +283,8 @@ case ${GREENPLUM_DEPLOYMENT} in
         setup_version_config
         verify_prerequisites
         setup_master
+        setup_gpinitsystem_config
+        setup_hostfile_gpinitsystem
         generate_gpinitsystem_config
         initialize_and_start_gpdb
         ;;

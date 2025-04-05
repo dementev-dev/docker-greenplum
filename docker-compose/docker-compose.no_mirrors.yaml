@@ -23,8 +23,8 @@ services:
       - gpmon_password
     volumes:
       # - gpdb-master-data:/data
-      # - ./conf/gpinitsystem_config_no_mirrors:/data/gpinitsystem_config
-      - ./conf/hostfile_gpinitsystem:/data/hostfile_gpinitsystem
+      - ./conf/${CONFIG_FOLDER}/gpinitsystem_config_no_mirrors:/tmp/gpinitsystem_config
+      - ./conf/hostfile_gpinitsystem:/tmp/hostfile_gpinitsystem
       - ./conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
       - ./conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
     depends_on:
