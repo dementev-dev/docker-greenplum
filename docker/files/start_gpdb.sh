@@ -3,6 +3,7 @@ set -eo pipefail
 
 gp_init_config_file="${GREENPLUM_DATA_DIRECTORY}/gpinitsystem_config"
 gp_init_host_file="${GREENPLUM_DATA_DIRECTORY}/hostfile_gpinitsystem"
+gp_master_dir_name="master"
 gp_hostname=$(hostname)
 
 error_and_exit() {
@@ -40,13 +41,11 @@ setup_version_config() {
   gp_major_version=$(gpinitsystem --version | cut -d' ' -f2 | cut -d'.' -f1)
   case ${gp_major_version} in
     "6")
-      gp_master_dir_name="master"
       gp_log_dir="pg_log"
       gp_master_data_dir_prefix="MASTER"
 
       ;;
     "7")
-      gp_master_dir_name="coordinator"
       gp_log_dir="log"
       gp_master_data_dir_prefix="COORDINATOR"
       ;;
@@ -76,6 +75,19 @@ setup_segments() {
     create_directory "${GREENPLUM_DATA_DIRECTORY}/${segment_num}/${segment_type}"
 }
 
+# Resolve issue for GPDB 7 with mounted authorized_keys in docker
+# In GPDB 7, gpssh-exkeys use rsync to copy the authorized_keys
+# and we get error:
+#   rsync: rename "/home/gpadmin/.ssh/.authorized_keys.wiHHYt" -> "authorized_keys": Device or resource busy (16)
+# For GPDB 6 the problem is not reproduced, because the scp command is used.
+setup_segment_authorized_keys(){
+    if [ -f /tmp/authorized_keys ]; then
+        echo "INFO - Copy authorized_keys to /home/${GREENPLUM_USER}/.ssh/authorized_keys"
+        cp /tmp/authorized_keys /home/${GREENPLUM_USER}/.ssh/authorized_keys
+        chmod 600 /home/${GREENPLUM_USER}/.ssh/authorized_keys
+    fi
+}
+
 verify_prerequisites() {
     file_env "GREENPLUM_PASSWORD"
 
@@ -98,6 +110,13 @@ check_required_var() {
     fi
 }
 
+setup_gpinitsystem_config(){
+    if [ -f /tmp/gpinitsystem_config ]; then
+        echo "INFO - Copy gpinitsystem_config to ${gp_init_config_file}"
+        cp /tmp/gpinitsystem_config "${gp_init_config_file}"
+    fi
+}
+
 generate_gpinitsystem_config() {
     if [ ! -f "${gp_init_config_file}" ] ; then
         cat > "${gp_init_config_file}" <<EOF
@@ -116,6 +135,14 @@ declare -a DATA_DIRECTORY=(${GREENPLUM_DATA_DIRECTORY}/00/primary ${GREENPLUM_DA
 EOF
     fi
 }
+
+setup_hostfile_gpinitsystem(){
+    if [ -f /tmp/hostfile_gpinitsystem ]; then
+        echo "INFO - Copy hostfile_gpinitsystem to ${gp_init_host_file}"
+        cp /tmp/hostfile_gpinitsystem "${gp_init_host_file}"
+    fi
+}
+
 generate_hostfile_gpinitsystem() {
     if [ ! -f "${gp_init_host_file}" ] ; then
         echo "${gp_hostname}" > ${gp_init_host_file}
@@ -128,13 +155,13 @@ initialize_and_start_gpdb() {
 
     # Scan and add host keys
     for host in $(cat ${gp_init_host_file}); do
-        ssh-keyscan $host >> /home/${GREENPLUM_USER}/.ssh/known_hosts 2>/dev/null
+        ssh-keyscan -t rsa $host >> /home/${GREENPLUM_USER}/.ssh/known_hosts 2>/dev/null
     done
     chmod 644 /home/${GREENPLUM_USER}/.ssh/known_hosts
 
-    # Fetch ssh keys from hosts
+    # Fetch rsa ssh keys from hosts
     gpssh-exkeys -f "${gp_init_host_file}"
-    
+
     if [ -f "${pg_hba}" ]; then
         # In case when we use persistent volume and data catalog is already exists
         # we need to configure .pgpass file for gpperfmon before starting GPDB
@@ -214,6 +241,11 @@ initialize_and_start_gpdb() {
             pxf cluster register
             echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION IF NOT EXISTS pxf;\" | xargs"
             psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION IF NOT EXISTS pxf;" | xargs
+            echo "INFO - configure JVM options for PXF"
+            # Minimaze JVM memory for PXF.
+            # For docker default is too big.
+            echo 'PXF_JVM_OPTS="-Xmx512m -Xms256m"' >> ${pxf_env}
+            pxf cluster sync
         fi
         echo "INFO - pxf cluster start"
         pxf cluster start
@@ -241,7 +273,9 @@ case ${GREENPLUM_DEPLOYMENT} in
         setup_master
         setup_segments "00" "primary"
         setup_segments "01" "primary"
+        setup_gpinitsystem_config
         generate_gpinitsystem_config
+        setup_hostfile_gpinitsystem
         generate_hostfile_gpinitsystem
         initialize_and_start_gpdb
         ;;
@@ -249,10 +283,13 @@ case ${GREENPLUM_DEPLOYMENT} in
         setup_version_config
         verify_prerequisites
         setup_master
+        setup_gpinitsystem_config
+        setup_hostfile_gpinitsystem
         generate_gpinitsystem_config
         initialize_and_start_gpdb
         ;;
     "segment")
+        setup_segment_authorized_keys
         for arg in "$@"; do
             IFS=':' read -r segment_num segment_type <<< "$arg"
             setup_segments "$segment_num" "$segment_type"

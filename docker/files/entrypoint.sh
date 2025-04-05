@@ -31,7 +31,11 @@ if [ "${uid}" = "0" ]; then
 fi
 
 # Start SSH server.
-/etc/init.d/ssh start
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+    ssh-keygen -A
+fi
+mkdir -p /run/sshd
+/usr/sbin/sshd
 sleep 2
 
 # Execute command.

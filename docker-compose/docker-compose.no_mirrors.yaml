@@ -23,8 +23,8 @@ services:
       - gpmon_password
     volumes:
       # - gpdb-master-data:/data
-      # - ./conf/gpinitsystem_config_no_mirrors:/data/gpinitsystem_config
-      - ./conf/hostfile_gpinitsystem:/data/hostfile_gpinitsystem
+      - ./conf/${CONFIG_FOLDER}/gpinitsystem_config_no_mirrors:/tmp/gpinitsystem_config
+      - ./conf/hostfile_gpinitsystem:/tmp/hostfile_gpinitsystem
       - ./conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
       - ./conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
     depends_on:
@@ -41,8 +41,8 @@ services:
     environment:
       - GREENPLUM_DEPLOYMENT=segment
     volumes:
-      # - gpdb-segment1-data:/data
-      - ./conf/ssh/authorized_keys:/home/gpadmin/.ssh/authorized_keys
+      #- gpdb-segment1-data:/data
+      - ./conf/ssh/authorized_keys:/tmp/authorized_keys
     stop_grace_period: 60s
     networks:
       - greenplum
@@ -55,8 +55,8 @@ services:
     environment:
       - GREENPLUM_DEPLOYMENT=segment
     volumes:
-      # - gpdb-segment2-data:/data
-      - ./conf/ssh/authorized_keys:/home/gpadmin/.ssh/authorized_keys
+      #- gpdb-segment2-data:/data
+      - ./conf/ssh/authorized_keys:/tmp/authorized_keys
     stop_grace_period: 60s
     networks:
       - greenplum
