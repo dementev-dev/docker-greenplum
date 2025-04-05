@@ -38,6 +38,23 @@ Required environment variables:
 * `GREENPLUM_PASSWORD` - password for `${GREENPLUM_USER}` user, **required**;
 * `GREENPLUM_GPMON_PASSWORD` - password for `gpmon` user, **required** when `GREENPLUM_GPPERFMON_ENABLE` is `true`;
 
+## Build matrix
+
+Supported Greenplum version tags.
+
+Greenplum 6:
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
+|---|---|---|
+| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` |
+| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` |
+| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` |
+
+Greenplum 7:
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
+|---|---|---|
+| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |
+| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |
+
 ## Pull
 Change `tag` to the version you need.
 
@@ -139,20 +156,3 @@ Build with specific version for components:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
 ```
-
-## Build matrix
-
-Supported Greenplum version tags.
-
-Greenplum 6:
-| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
-|---|---|---|
-| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` |
-| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` |
-| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` |
-
-Greenplum 7:
-| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
-|---|---|---|
-| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |
-| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |
