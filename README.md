@@ -106,8 +106,7 @@ echo "changeme" > docker-compose/secrets/gpmon_password
 For correct start docker compose, configs should be mounted to `/tmp`.
 It's valid for `gpinitsystem_config`, `hostfile_gpinitsystem` and `authorized_keys` files.
 
-SSH rsa keys should be mounted to `/home/${GREENPLUM_USER}$/.ssh/` directory.
-
+SSH rsa keys should be mounted to `/home/${GREENPLUM_USER}/.ssh/` directory.
 Master mounts:
 ```yaml
     volumes:
