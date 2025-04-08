@@ -284,8 +284,8 @@ case ${GREENPLUM_DEPLOYMENT} in
         verify_prerequisites
         setup_master
         setup_gpinitsystem_config
-        setup_hostfile_gpinitsystem
         generate_gpinitsystem_config
+        setup_hostfile_gpinitsystem
         initialize_and_start_gpdb
         ;;
     "segment")
