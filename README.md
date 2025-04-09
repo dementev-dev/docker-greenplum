@@ -141,17 +141,33 @@ docker compose -f ./docker-compose/docker-compose.with_mirrors.yaml up -d
 
 ## Build
 
-Simple build:
+For Ubuntu based images:
+```bash
+make build_gpdb_6_ubuntu TAG_GPDB_6=6.27.1
+```
+```bash
+make build_gpdb_7_ubuntu TAG_GPDB_7=7.1.0
+```
+
+For Oracle Linux based images:
+```bash
+make build_gpdb_6_oraclelinux TAG_GPDB_6=6.27.1
+```
+```bash
+make build_gpdb_7_oraclelinux TAG_GPDB_7=7.1.0
+```
+
+Simple manual build:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile -t greenplum:6.27.1 .
 ```
 
-Build with specific version:
+Manual build with specific version:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 -t greenplum:6.27.1 .
 ```
 
-Build with specific version for components:
+Manual build with specific version for components:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
 ```
