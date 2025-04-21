@@ -14,7 +14,7 @@ ARG GPBACKUP_VERSION="1.30.5"
 ARG GPBACKUP_S3_PLUGIN_DOWNLOAD_URL="https://github.com/woblerr/gpbackup-s3-plugin/archive/refs/tags"
 ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
-ARG GPBACKMAN_VERSION="v0.7.1"
+ARG GPBACKMAN_VERSION="v0.7.2"
 ARG GOSU_VERSION="1.17"
 
 FROM oraclelinux:${OL_VERSION} AS builder
