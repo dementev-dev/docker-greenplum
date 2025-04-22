@@ -43,17 +43,17 @@ Required environment variables:
 Supported Greenplum version tags.
 
 Greenplum 6:
-| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
-|---|---|---|
-| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` |
-| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` |
-| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` |
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
+|---|---|---| ---|
+| 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` | `linux/amd64`, `linux/arm64` |
+| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` | `linux/amd64`, `linux/arm64` |
+| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` | `linux/amd64`, `linux/arm64` |
 
 Greenplum 7:
-| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | 
-|---|---|---|
-| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |
-| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |
+| GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
+|---|---|---| ---|
+| 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |  `linux/amd64`, `linux/arm64` |
+| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |  `linux/amd64`, `linux/arm64` |
 
 ## Pull
 Change `tag` to the version you need.
@@ -159,15 +159,15 @@ make build_gpdb_7_oraclelinux TAG_GPDB_7=7.1.0
 
 Simple manual build:
 ```bash
-docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile -t greenplum:6.27.1 .
+docker buildx build -f docker/ubuntu22.04/6/Dockerfile -t greenplum:6.27.1 .
 ```
 
-Manual build with specific version:
+Manual build with specific component version for `linux/amd64` platform:
 ```bash
 docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 -t greenplum:6.27.1 .
 ```
 
-Manual build with specific version for components:
+Manual build with specific component versions for `linux/amd64` and `linux/arm64` platforms:
 ```bash
-docker buildx build --platform linux/amd64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
+docker buildx build --platform linux/amd64,linux/arm64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
 ```
