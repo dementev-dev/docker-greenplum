@@ -3,7 +3,7 @@ name: build-gpdb6
 on: [push, pull_request]
 
 env:
-  build_platforms: "linux/amd64"
+  build_platforms: "linux/amd64,linux/arm64"
 
 jobs:
   build_image:
