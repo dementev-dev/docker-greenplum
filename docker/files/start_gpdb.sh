@@ -154,7 +154,6 @@ execute_custom_init_scripts() {
     if [ -d "${gp_custom_init_dir}" ] && [ -n "$(ls -A ${gp_custom_init_dir})" ]; then
         echo "INFO - Executing custom initialization scripts"
         for script in "${gp_custom_init_dir}"/*; do
-            ls -la "${script}"
             case "${script}" in
                 *.sh)
                     if [ -x "${script}" ]; then

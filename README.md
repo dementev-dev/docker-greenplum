@@ -14,7 +14,8 @@ The Greenplum in docker provides the following features:
 - gpbackup/gprestore;
 - gpbackup-s3-plugin;
 - gpbackman;
-- PXF (Platform Extension Framework).
+- PXF (Platform Extension Framework);
+- custom initialization scripts.
 
 For information about supported builds, see [Build matrix](#build-matrix).
 For specific version, you can build your own image using the [Build](#build) section.
@@ -92,6 +93,61 @@ As an alternative to passing sensitive information via environment variables, `_
 For example:
 ```bash
 docker run -p 5432:5432 -e GREENPLUM_PASSWORD_FILE=/run/secrets/gpdb_password -d greenplum:6.27.1
+```
+
+### Initialization Scripts
+
+The image supports running custom initialization `*.sql` or `*.sh` scripts after Greenplum was started. Place your scripts in the `/docker-entrypoint-initdb.d` directory inside the container.
+
+Scripts in `/docker-entrypoint-initdb.d` are executed only if a container is started with an empty data directory; any pre-existing database will remain untouched when the container is started.
+
+#### Script Execution Process
+
+Scripts are processed as follows:
+- **SQL scripts** (`*.sql`): Executed using `psql` with the following options:
+  - Executed for the database specified in `GREENPLUM_DATABASE_NAME`.
+  - Run with `-v ON_ERROR_STOP=1` flag.
+  - Run with `--no-psqlrc`.
+  - Connected as the `GREENPLUM_USER`.
+- **Shell scripts** (`*.sh`):
+  - If the script has executable permissions, it is executed directly.
+  - If not executable, it is sourced.
+- **Other files**: Files with other extensions are ignored.
+
+Example SQL initialization script `00_init.sql`:
+
+```sql
+CREATE TABLE test_initialization (
+  id serial PRIMARY KEY,
+  name text,
+  created_at timestamp DEFAULT current_timestamp
+);
+
+INSERT INTO test_initialization (name) VALUES ('Initialized via sql script');
+```
+Example shell script `01_init.sh`:
+
+```bash
+#!/bin/bash
+echo "Executing initialization shell script"
+psql -U ${GREENPLUM_USER} -h $(hostname) -d ${GREENPLUM_DATABASE_NAME} -c "INSERT INTO test_initialization (name) VALUES ('Added via shell script');"
+echo "Shell script executed successfully!"
+```
+
+You can mount your initialization scripts directory to the container:
+
+```bash
+docker run -p 5432:5432 \
+  -e GREENPLUM_PASSWORD=gparray \
+  -v $(pwd)/docs/custom_init_scripts:/docker-entrypoint-initdb.d \
+  -d greenplum:6.27.1
+```
+
+Or build a custom image:
+
+```bash
+FROM greenplum:6.27.1
+COPY docs/custom_init_scripts/* /docker-entrypoint-initdb.d/
 ```
 
 ### Docker Compose
