@@ -24,6 +24,7 @@ services:
     volumes:
       - gpdb-master-data:/data
       # - ./conf/gpinitsystem_config_no_mirrors:/tmp/gpinitsystem_config
+      # - ../docs/custom_init_script:/docker-entrypoint-initdb.d
       - ./conf/hostfile_gpinitsystem:/tmp/hostfile_gpinitsystem
       - ./conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
       - ./conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
