@@ -274,7 +274,13 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> /etc/ssh/sshd_config \
     && echo "${GREENPLUM_USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
     && echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc \
-    && echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /home/${GREENPLUM_USER}/.bashrc \
+    && ARCH=$(dpkg --print-architecture) \
+    && arch="$(dpkg --print-architecture)" \
+    && case "${arch}" in \
+        arm64) echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-arm64" >> /home/${GREENPLUM_USER}/.bashrc ;; \
+        amd64) echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> /home/${GREENPLUM_USER}/.bashrc ;; \
+        *) echo >&2 "error: unknown/unsupported architecture '${arch}'"; exit 1 ;; \
+    esac \
     && echo 'export PATH="/usr/local/pxf/bin:${PATH}"' >> /home/${GREENPLUM_USER}/.bashrc \
     && echo "export PXF_BASE=${GREENPLUM_DATA_DIRECTORY}/pxf" >> /home/${GREENPLUM_USER}/.bashrc \
     && mkdir -p ${GREENPLUM_DATA_DIRECTORY} \
