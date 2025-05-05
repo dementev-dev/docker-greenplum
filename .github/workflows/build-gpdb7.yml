@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        greenplum_version: ["7.0.0", "7.1.0"]
+        greenplum_version: ["7.1.0"]
         os_version: ["ubuntu22.04", "oraclelinux8"]
     steps:
     - uses: actions/checkout@v4
