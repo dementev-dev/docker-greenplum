@@ -94,12 +94,16 @@ verify_prerequisites() {
     check_required_var "GREENPLUM_DATA_DIRECTORY" "${GREENPLUM_DATA_DIRECTORY}"
     check_required_var "GREENPLUM_PASSWORD" "${GREENPLUM_PASSWORD}"
     # Check gpperfmon password only if gpperfmon is enabled for GPDB6 master deployment
-    if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-       [ "${gp_major_version}" == "6" ] && 
-       [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+    if is_gpperfmon_enabled; then
         file_env "GREENPLUM_GPMON_PASSWORD"
         check_required_var "GREENPLUM_GPMON_PASSWORD" "${GREENPLUM_GPMON_PASSWORD}"
     fi
+}
+
+is_gpperfmon_enabled() {
+    [[ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" && 
+       "${gp_major_version}" == "6" && 
+       "${GREENPLUM_DEPLOYMENT}" == "master" ]]
 }
 
 check_required_var() {
@@ -202,6 +206,7 @@ initialize_and_start_gpdb() {
     local pg_hba="${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/pg_hba.conf"
     local pxf_env="${PXF_BASE}/conf/pxf-env.sh"
     local end_flag=""
+    local gpdb_already_exists_flag=false
 
     # Scan and add host keys
     for host in $(cat ${gp_init_host_file}); do
@@ -213,14 +218,12 @@ initialize_and_start_gpdb() {
     gpssh-exkeys -f "${gp_init_host_file}"
 
     if [ -f "${pg_hba}" ]; then
+        gpdb_already_exists_flag=true
         # In case when we use persistent volume and data catalog is already exists
         # we need to configure .pgpass file for gpperfmon before starting GPDB
         # Otherwise, we get error:
         # 3rd party error log: Performance Monitor - failed to connect to gpperfmon database: fe_sendauth: no password supplied
-        if [ ! -f "/home/${GREENPLUM_USER}/.pgpass" ] &&
-           [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-           [ "${gp_major_version}" == "6" ] && 
-           [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        if is_gpperfmon_enabled; then
             echo "*:5432:gpperfmon:gpmon:${GREENPLUM_GPMON_PASSWORD}" > /home/${GREENPLUM_USER}/.pgpass
             chmod 600 /home/${GREENPLUM_USER}/.pgpass
         fi
@@ -235,8 +238,7 @@ initialize_and_start_gpdb() {
             gpinitsystem -e ${GREENPLUM_PASSWORD} -ac ${gp_init_config_file}
         fi
         # Enable gpperfmon
-        if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-           [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        if is_gpperfmon_enabled; then
             echo "INFO - Enable gpperfmon"
             USER=${GREENPLUM_USER} gpperfmon_install --enable --password "${GREENPLUM_GPMON_PASSWORD}" --port 5432
             # Necessary to correct start gpsmon process. Without this, in some cases, the process is not started
@@ -310,7 +312,10 @@ initialize_and_start_gpdb() {
         gpstop -a -M fast && end_flag=1" INT TERM
     tail -f $(ls ${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/${gp_log_dir}/gpdb-* | tail -n1) &
     # Execute custom init scripts.
-    execute_custom_init_scripts
+    if [ "${gpdb_already_exists_flag}" == false ]; then
+        echo "INFO - Execute custom init scripts"
+        execute_custom_init_scripts
+    fi
     #trap
     while [ "${end_flag}" == '' ]; do
         sleep 1
