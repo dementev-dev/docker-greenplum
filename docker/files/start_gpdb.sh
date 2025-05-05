@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -Eeuo pipefail
 
 gp_init_config_file="${GREENPLUM_DATA_DIRECTORY}/gpinitsystem_config"
 gp_init_host_file="${GREENPLUM_DATA_DIRECTORY}/hostfile_gpinitsystem"
+gp_custom_init_dir="/docker-entrypoint-initdb.d"
 gp_master_dir_name="master"
 gp_hostname=$(hostname)
 
@@ -34,25 +35,24 @@ file_env() {
 }
 
 setup_version_config() {
-  source "/home/${GREENPLUM_USER}/.bashrc"
-  # Get gpdb major version from gpinitsystem command.
-  # It's necessary to know the version to operate with the correct directories.
-  # Example: gpinitsystem 6.26.4 build dev
-  gp_major_version=$(gpinitsystem --version | cut -d' ' -f2 | cut -d'.' -f1)
-  case ${gp_major_version} in
-    "6")
-      gp_log_dir="pg_log"
-      gp_master_data_dir_prefix="MASTER"
-
-      ;;
-    "7")
-      gp_log_dir="log"
-      gp_master_data_dir_prefix="COORDINATOR"
-      ;;
-    *)
-      error_and_exit "Invalid Greenplum version: ${gp_major_version}"
-      ;;
-  esac
+    source "/home/${GREENPLUM_USER}/.bashrc"
+    # Get gpdb major version from gpinitsystem command.
+    # It's necessary to know the version to operate with the correct directories.
+    # Example: gpinitsystem 6.26.4 build dev
+    gp_major_version=$(gpinitsystem --version | cut -d' ' -f2 | cut -d'.' -f1)
+    case ${gp_major_version} in
+      "6")
+        gp_log_dir="pg_log"
+        gp_master_data_dir_prefix="MASTER"
+        ;;
+      "7")
+        gp_log_dir="log"
+        gp_master_data_dir_prefix="COORDINATOR"
+        ;;
+      *)
+        error_and_exit "Invalid Greenplum version: ${gp_major_version}"
+        ;;
+    esac
 }
 
 create_directory() {
@@ -94,12 +94,16 @@ verify_prerequisites() {
     check_required_var "GREENPLUM_DATA_DIRECTORY" "${GREENPLUM_DATA_DIRECTORY}"
     check_required_var "GREENPLUM_PASSWORD" "${GREENPLUM_PASSWORD}"
     # Check gpperfmon password only if gpperfmon is enabled for GPDB6 master deployment
-    if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-       [ "${gp_major_version}" == "6" ] && 
-       [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+    if is_gpperfmon_enabled; then
         file_env "GREENPLUM_GPMON_PASSWORD"
         check_required_var "GREENPLUM_GPMON_PASSWORD" "${GREENPLUM_GPMON_PASSWORD}"
     fi
+}
+
+is_gpperfmon_enabled() {
+    [[ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" && 
+       "${gp_major_version}" == "6" && 
+       "${GREENPLUM_DEPLOYMENT}" == "master" ]]
 }
 
 check_required_var() {
@@ -149,9 +153,60 @@ generate_hostfile_gpinitsystem() {
     fi
 }
 
+execute_custom_init_scripts() {
+    local script
+    if [ -d "${gp_custom_init_dir}" ] && [ -n "$(ls -A ${gp_custom_init_dir})" ]; then
+        echo "INFO - Executing custom initialization scripts"
+        for script in "${gp_custom_init_dir}"/*; do
+            case "${script}" in
+                *.sh)
+                    if [ -x "${script}" ]; then
+                        echo "INFO - Executing shell script: ${script}"
+                        "${script}"
+                    else
+                        echo "INFO - Sourcing shell script: ${script}"
+                        source "${script}"
+                    fi
+                    ;;
+                *.sql)
+                    echo "INFO - Executing SQL script: ${script}"
+                    psql -v ON_ERROR_STOP=1  --no-psqlrc -U "${GREENPLUM_USER}" -d "${GREENPLUM_DATABASE_NAME}" -f "${script}"
+                    ;;
+                *)
+                    echo "INFO - Ignoring: ${script}"
+                    ;;
+            esac
+        done
+        echo "INFO - Finished executing custom initialization scripts"
+    fi
+}
+
+initialize_and_start_gpdb_segments() {
+    local end_flag=""
+    local arg segment_num segment_type
+    echo "INFO - Initializing segment host"
+    if [ $# -eq 0 ]; then
+        error_and_exit "No segment specifications provided"
+    fi
+    for arg in "$@"; do
+        if [[ ! "$arg" =~ ^[0-9]+:(primary|mirror)$ ]]; then
+            error_and_exit "Invalid segment specification format: $arg, expected format: NUMBER:TYPE"
+        fi
+        IFS=':' read -r segment_num segment_type <<< "$arg"
+        setup_segments "${segment_num}" "${segment_type}"
+    done
+    trap "echo 'INFO - Shutdown segment host' && end_flag=1" TERM INT
+    # Keep container running
+    while [ "${end_flag}" == '' ]; do
+        sleep 1
+    done
+}
+
 initialize_and_start_gpdb() {
     local pg_hba="${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/pg_hba.conf"
     local pxf_env="${PXF_BASE}/conf/pxf-env.sh"
+    local end_flag=""
+    local gpdb_already_exists_flag=false
 
     # Scan and add host keys
     for host in $(cat ${gp_init_host_file}); do
@@ -163,14 +218,12 @@ initialize_and_start_gpdb() {
     gpssh-exkeys -f "${gp_init_host_file}"
 
     if [ -f "${pg_hba}" ]; then
+        gpdb_already_exists_flag=true
         # In case when we use persistent volume and data catalog is already exists
         # we need to configure .pgpass file for gpperfmon before starting GPDB
         # Otherwise, we get error:
         # 3rd party error log: Performance Monitor - failed to connect to gpperfmon database: fe_sendauth: no password supplied
-        if [ ! -f "/home/${GREENPLUM_USER}/.pgpass" ] &&
-           [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-           [ "${gp_major_version}" == "6" ] && 
-           [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        if is_gpperfmon_enabled; then
             echo "*:5432:gpperfmon:gpmon:${GREENPLUM_GPMON_PASSWORD}" > /home/${GREENPLUM_USER}/.pgpass
             chmod 600 /home/${GREENPLUM_USER}/.pgpass
         fi
@@ -185,8 +238,7 @@ initialize_and_start_gpdb() {
             gpinitsystem -e ${GREENPLUM_PASSWORD} -ac ${gp_init_config_file}
         fi
         # Enable gpperfmon
-        if [ "${GREENPLUM_GPPERFMON_ENABLE}" == "true" ] && 
-           [ "${gp_major_version}" == "6" ] && [ "${GREENPLUM_DEPLOYMENT}" == "master" ]; then
+        if is_gpperfmon_enabled; then
             echo "INFO - Enable gpperfmon"
             USER=${GREENPLUM_USER} gpperfmon_install --enable --password "${GREENPLUM_GPMON_PASSWORD}" --port 5432
             # Necessary to correct start gpsmon process. Without this, in some cases, the process is not started
@@ -213,7 +265,7 @@ initialize_and_start_gpdb() {
                 USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "diskquota-${gp_diskquota_version}"
             else
                 echo "INFO - gpconfig -c shared_preload_libraries -v \"'$gp_shared_preload_libraries,diskquota-${gp_diskquota_version}'\""
-                USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "'$shared_preload_libraries,diskquota-${gp_diskquota_version}'"
+                USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "'$gp_shared_preload_libraries,diskquota-${gp_diskquota_version}'"
             fi
         fi
         # Configure pg_hba
@@ -252,16 +304,20 @@ initialize_and_start_gpdb() {
         sleep 10
     fi
     # Monitor logs
-     trap "kill %1; \
-         if [ ${GREENPLUM_PXF_ENABLE} == 'true' ] && [ -f '${pxf_env}' ]; then \
-             echo 'INFO - Stop PXF cluster'; \
-             pxf cluster stop; \
-         fi; \
-         gpstop -a -M fast && END=1" INT TERM
+    trap "kill %1; \
+        if [ ${GREENPLUM_PXF_ENABLE} == 'true' ] && [ -f '${pxf_env}' ]; then \
+            echo 'INFO - Stop PXF cluster'; \
+            pxf cluster stop; \
+        fi; \
+        gpstop -a -M fast && end_flag=1" INT TERM
     tail -f $(ls ${GREENPLUM_DATA_DIRECTORY}/${gp_master_dir_name}/${GREENPLUM_SEG_PREFIX}-1/${gp_log_dir}/gpdb-* | tail -n1) &
-
+    # Execute custom init scripts.
+    if [ "${gpdb_already_exists_flag}" == false ]; then
+        echo "INFO - Execute custom init scripts"
+        execute_custom_init_scripts
+    fi
     #trap
-    while [ "$END" == '' ]; do
+    while [ "${end_flag}" == '' ]; do
         sleep 1
     done
 }
@@ -290,15 +346,7 @@ case ${GREENPLUM_DEPLOYMENT} in
         ;;
     "segment")
         setup_segment_authorized_keys
-        for arg in "$@"; do
-            IFS=':' read -r segment_num segment_type <<< "$arg"
-            setup_segments "$segment_num" "$segment_type"
-        done
-        trap "echo 'INFO - Shutdown segment host' && END=1" TERM INT
-        # Keep container running
-        while [ "$END" == '' ]; do
-            sleep 1
-        done
+        initialize_and_start_gpdb_segments "$@"
         ;;
     *)
         error_and_exit "Invalid deployment mode: ${GREENPLUM_DEPLOYMENT}"

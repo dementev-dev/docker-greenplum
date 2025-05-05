@@ -27,7 +27,8 @@ if [ "${uid}" = "0" ]; then
     # Correct user:group.
     chown -R ${GREENPLUM_USER}:${GREENPLUM_GROUP} \
         /home/${GREENPLUM_USER} \
-        ${GREENPLUM_DATA_DIRECTORY}
+        ${GREENPLUM_DATA_DIRECTORY} \
+        /docker-entrypoint-initdb.d
 fi
 
 # Start SSH server.
