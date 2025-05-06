@@ -17,9 +17,6 @@ The Greenplum in docker provides the following features:
 - PXF (Platform Extension Framework);
 - custom initialization scripts.
 
-For information about supported builds, see [Build matrix](#build-matrix).
-For specific version, you can build your own image using the [Build](#build) section.
-
 Environment variables supported by this image:
 
 * `TZ` - container's time zone, default `Etc/UTC`;
@@ -41,7 +38,7 @@ Required environment variables:
 
 ## Build matrix
 
-The repository contains information for the last available versions. If necessary to use an older version - do a [manual build](#build).
+The repository contains information for the last available versions. For specific version, you can build your own image using the [Build](#build) section.
 
 Greenplum 6:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
