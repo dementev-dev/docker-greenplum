@@ -17,9 +17,6 @@ The Greenplum in docker provides the following features:
 - PXF (Platform Extension Framework);
 - custom initialization scripts.
 
-For information about supported builds, see [Build matrix](#build-matrix).
-For specific version, you can build your own image using the [Build](#build) section.
-
 Environment variables supported by this image:
 
 * `TZ` - container's time zone, default `Etc/UTC`;
@@ -41,20 +38,17 @@ Required environment variables:
 
 ## Build matrix
 
-Supported Greenplum version tags.
+The repository contains information for the last available versions. For specific version, you can build your own image using the [Build](#build) section.
 
 Greenplum 6:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
 |---|---|---| ---|
 | 6.27.1| `6.27.1`, `6.27.1-ubuntu22.04` | `6.27.1-oraclelinux8` | `linux/amd64`, `linux/arm64` |
-| 6.26.4| `6.26.4`, `6.26.4-ubuntu22.04` | `6.26.4-oraclelinux8` | `linux/amd64`, `linux/arm64` |
-| 6.25.4| `6.25.4`, `6.25.4-ubuntu22.04` | `6.25.4-oraclelinux8` | `linux/amd64`, `linux/arm64` |
 
 Greenplum 7:
 | GPDB Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
 |---|---|---| ---|
 | 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |  `linux/amd64`, `linux/arm64` |
-| 7.0.0| `7.0.0`, `7.0.0-ubuntu22.04` | `7.0.0-oraclelinux8` |  `linux/amd64`, `linux/arm64` |
 
 ## Pull
 Change `tag` to the version you need.
