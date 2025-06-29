@@ -77,7 +77,6 @@ RUN apt-get update \
         openjdk-11-jdk \
         libbrotli-dev \
         libsodium-dev \
-        liblzo2-dev \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -200,16 +199,16 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
     && make build
 
 # wal-g
+# Don't use USE_LZO=1, there is no need to build with WAL-E compatibility
+# See https://github.com/wal-g/wal-g/issues/1412#issuecomment-1401890162
 RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
     && cd /tmp/wal-g \
     && git checkout ${WALG_VERSION} \
     && USE_BROTLI=1 \
        USE_LIBSODIUM=1 \
-       USE_LZO=1 \
        make deps \
     && USE_BROTLI=1 \
        USE_LIBSODIUM=1 \
-       USE_LZO=1 \
        make gp_build \
     && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
 
