@@ -340,7 +340,7 @@ COPY --from=go_builder \
 COPY --from=go_builder /opt/go/bin/gpbackup_s3_plugin /usr/local/greenplum-db/bin/gpbackup_s3_plugin
 COPY --from=go_builder /usr/local/pxf /usr/local/pxf
 COPY --from=go_builder /tmp/gpbackman/gpbackman /usr/local/greenplum-db/bin/gpbackman
-COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
+COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/bin/wal-g
 COPY --chmod=755 docker/files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker/files/start_gpdb.sh /start_gpdb.sh
 
