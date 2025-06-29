@@ -17,6 +17,8 @@ ARG GPBACKUP_S3_PLUGIN_DOWNLOAD_URL="https://github.com/woblerr/gpbackup-s3-plug
 ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
 ARG GPBACKMAN_VERSION="v0.7.2"
+ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
+ARG WALG_VERSION="v3.0.5"
 
 FROM ubuntu:${UBUNTU_VERSION} AS builder
 
@@ -73,6 +75,9 @@ RUN apt-get update \
         git \
         sudo \
         openjdk-11-jdk \
+        libbrotli-dev \
+        libsodium-dev \
+        liblzo2-dev \
     && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -162,6 +167,8 @@ ARG GPBACKMAN_DOWNLOAD_URL
 ARG GPBACKMAN_VERSION
 ARG PXF_DOWNLOAD_URL
 ARG PXF_VERSION
+ARG WALG_DOWNLOAD_URL
+ARG WALG_VERSION
 
 RUN mkdir -p /opt/go \
     && wget https://go.dev/dl/go${GOLANG_VERSION}.linux-$(dpkg --print-architecture).tar.gz \
@@ -191,6 +198,20 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
     && tar -xzf /tmp/gpbackman-${GPBACKMAN_VERSION}.tar.gz --strip-components=1 -C /tmp/gpbackman \
     && cd /tmp/gpbackman \
     && make build
+
+# wal-g
+RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
+    && cd /tmp/wal-g \
+    && git checkout ${WALG_VERSION} \
+    && USE_BROTLI=1 \
+       USE_LIBSODIUM=1 \
+       USE_LZO=1 \
+       make deps \
+    && USE_BROTLI=1 \
+       USE_LIBSODIUM=1 \
+       USE_LZO=1 \
+       make gp_build \
+    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
 
 # pxf
 # Build pxf without tests
@@ -228,7 +249,8 @@ ENV TZ="Etc/UTC" \
     GREENPLUM_DATABASE_NAME="demo" \
     GREENPLUM_GPPERFMON_ENABLE="false" \
     GREENPLUM_DISKQUOTA_ENABLE="false" \
-    GREENPLUM_PXF_ENABLE="false"
+    GREENPLUM_PXF_ENABLE="false" \
+    GREENPLUM_WALG_ENABLE="false"
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -318,6 +340,7 @@ COPY --from=go_builder \
 COPY --from=go_builder /opt/go/bin/gpbackup_s3_plugin /usr/local/greenplum-db/bin/gpbackup_s3_plugin
 COPY --from=go_builder /usr/local/pxf /usr/local/pxf
 COPY --from=go_builder /tmp/gpbackman/gpbackman /usr/local/greenplum-db/bin/gpbackman
+COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
 COPY --chmod=755 docker/files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker/files/start_gpdb.sh /start_gpdb.sh
 

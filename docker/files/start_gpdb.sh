@@ -268,6 +268,20 @@ initialize_and_start_gpdb() {
                 USER=${GREENPLUM_USER} gpconfig -c shared_preload_libraries -v "'$gp_shared_preload_libraries,diskquota-${gp_diskquota_version}'"
             fi
         fi
+        if [ "${GREENPLUM_WALG_ENABLE}" == "true" ]; then
+            echo "INFO - Set parameters fot WAL archiving"
+            echo "INFO - gpconfig -c wal_level -v archive"
+            USER=${GREENPLUM_USER} gpconfig -c wal_level -v archive --skipvalidation
+            echo "INFO - gpconfig -c archive_mode -v on"
+            USER=${GREENPLUM_USER} gpconfig -c archive_mode -v on
+            echo "INFO - gpconfig -c archive_command -v '/bin/true'"
+            # Set archive_command to /bin/true because there is no storage for WAL specified
+            # This is necessary to avoid errors
+            # Use init script to set actual archive_command
+            USER=${GREENPLUM_USER} gpconfig -c archive_command -v "'/bin/true'"
+            echo "INFO - psql ${GREENPLUM_DATABASE_NAME} -t -c \"CREATE EXTENSION IF NOT EXISTS gp_pitr;\" | xargs"
+            psql ${GREENPLUM_DATABASE_NAME} -t -c "CREATE EXTENSION IF NOT EXISTS gp_pitr;" | xargs
+        fi
         # Configure pg_hba
         echo "INFO - Configure pg_hba.conf"
         {
