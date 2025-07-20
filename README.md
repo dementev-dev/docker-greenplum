@@ -221,3 +221,10 @@ Manual build with specific component versions for `linux/amd64` and `linux/arm64
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -f docker/ubuntu22.04/6/Dockerfile --build-arg GPDB_VERSION=6.27.1 --build-arg DISKQUOTA_VERSION=2.3.0 --build-arg GPBACKUP_VERSION=1.30.5 -t greenplum:6.27.1 .
 ```
+
+## Running tests
+Run the end-to-end tests:
+```bash
+make test-e2e
+```
+See [tests description](./e2e-tests/README.md).
