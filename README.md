@@ -15,7 +15,8 @@ The Greenplum in docker provides the following features:
 - gpbackup-s3-plugin;
 - gpbackman;
 - PXF (Platform Extension Framework);
-- custom initialization scripts.
+- custom initialization scripts;
+- WAL-G (physical backups).
 
 Environment variables supported by this image:
 
@@ -31,6 +32,7 @@ Environment variables supported by this image:
 * `GREENPLUM_GPPERFMON_ENABLE` - enable gpperfmon (GPDB 6 only), default `false`;
 * `GREENPLUM_DISKQUOTA_ENABLE` - enable diskquota, default `false`;
 * `GREENPLUM_PXF_ENABLE` - enable PXF, default `false`;
+* `GREENPLUM_WALG_ENABLE` - enable WAL-G, default `false`;
 
 Required environment variables:
 * `GREENPLUM_PASSWORD` - password for `${GREENPLUM_USER}` user, **required**;
@@ -142,6 +144,29 @@ Or build a custom image:
 ```bash
 FROM greenplum:6.27.1
 COPY docs/custom_init_scripts/* /docker-entrypoint-initdb.d/
+```
+
+#### WAL-G configuration
+
+When `GREENPLUM_WALG_ENABLE=true`, WAL-G is installed and available, but you need to configure it manually or use initialization scripts to set up `archive_command` and other parameters.
+
+
+```bash
+docker run -p 5432:5432 \
+  -e GREENPLUM_PASSWORD=gparray \
+  -e GREENPLUM_WALG_ENABLE=true \
+  -v $(pwd)/wal-g.yaml:/tmp/wal-g.yaml \
+  -v $(pwd)/wal-g_init.sh:/docker-entrypoint-initdb.d/wal-g_init.sh \
+  -d greenplum:6.27.1
+```
+
+Where init scripts for WAL-G looks like:
+```bash
+#!/bin/bash
+echo "Configuring wal-g archive_command"
+USER=${GREENPLUM_USER} gpconfig -c archive_command -v "wal-g seg wal-push %p --content-id=%c --config /tmp/wal-g.yaml"
+USER=${GREENPLUM_USER} gpconfig -c archive_timeout -v 600 --skipvalidation
+USER=${GREENPLUM_USER} gpstop -u
 ```
 
 ### Docker Compose

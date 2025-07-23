@@ -25,7 +25,4 @@ PGUSER: "gpadmin"
 GOMAXPROCS: 6
 PGHOST: "localhost"
 PGDATABASE: "demo"
-PGUSER: "gpadmin"
 PGPASSFILE: "/home/gpadmin/.pgpass"
-
-

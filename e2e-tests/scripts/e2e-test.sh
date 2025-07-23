@@ -18,13 +18,13 @@ RP_NAME="rp1"
 if [ -z "$GP_PASSWORD" ]; then
     echo "ERROR - GP_PASSWORD variable is not set"
     exit 1
-fi  
+fi
 
 exec_sql() {
     local port=$1
     local sql=$2
     PGPASSWORD=${GP_PASSWORD} psql -h localhost -U ${GP_USER} -d ${GP_DB_NAME} -p ${port} -t -c "${sql}"
-}  
+}
 
 exec_docker(){
     local container_name=$1

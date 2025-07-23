@@ -269,7 +269,7 @@ initialize_and_start_gpdb() {
             fi
         fi
         if [ "${GREENPLUM_WALG_ENABLE}" == "true" ]; then
-            echo "INFO - Set parameters fot WAL archiving"
+            echo "INFO - Set parameters for WAL archiving"
             echo "INFO - gpconfig -c archive_mode -v on"
             USER=${GREENPLUM_USER} gpconfig -c archive_mode -v on
             echo "INFO - gpconfig -c archive_command -v '/bin/true'"
