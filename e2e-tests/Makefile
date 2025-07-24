@@ -1,4 +1,5 @@
 GPDB_PASSWORD := $(shell cat ../docker-compose/secrets/gpdb_password)
+CONFIG_FOLDER := $(shell grep '^CONFIG_FOLDER=' .env | head -1 | cut -d'=' -f2 | tr -d '"')
 
 .PHONY: test-e2e
 test-e2e: test-e2e-walg
@@ -15,7 +16,7 @@ test-e2e-walg-up:
 
 test-e2e-walg-run:
 	@echo "INFO - Run e2e tests for wal-g"
-	GREENPLUM_PASSWORD=$(GPDB_PASSWORD) ./scripts/e2e-test.sh
+	GREENPLUM_PASSWORD=$(GPDB_PASSWORD) GP_VERSION=$(CONFIG_FOLDER) ./scripts/e2e-test.sh
 
 .PHONY: test-e2e-walg-up
 test-e2e-walg-down:

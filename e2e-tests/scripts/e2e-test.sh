@@ -6,6 +6,7 @@ GP_PASSWORD=${GREENPLUM_PASSWORD:-}
 GP_MASTER_PORT=${EXPOSE_MASTER_PORT:-5432}
 GP_RESTORE_MASTER_PORT=${EXPOSE_RESTORE_MASTER_PORT:-6432}
 GP_DB_NAME=${GREENPLUM_DB_NAME:-demo}
+GP_VER=${GP_VERSION:-}
 
 WALG_CONFIG="/tmp/wal-g.yaml"
 WALG_RESTORE_CONFIG="/tmp/wal-g_restore.json"
@@ -17,6 +18,12 @@ RP_NAME="rp1"
 # Check password is set
 if [ -z "$GP_PASSWORD" ]; then
     echo "ERROR - GP_PASSWORD variable is not set"
+    exit 1
+fi
+
+# Check GP_VERSION is set
+if [ -z "$GP_VERSION" ]; then
+    echo "ERROR - GP_VERSION variable is not set"
     exit 1
 fi
 
@@ -61,7 +68,18 @@ get_table_data() {
 
 switch_wal() {
     local port=$1
-    exec_sql ${port} "SELECT pg_switch_xlog() UNION ALL SELECT pg_switch_xlog() FROM gp_dist_random('gp_id');"
+    case "${GP_VERSION}" in
+        "6")
+            exec_sql ${port} "SELECT pg_switch_xlog() UNION ALL SELECT pg_switch_xlog() FROM gp_dist_random('gp_id');"
+            ;;
+        "7")
+            exec_sql ${port} "SELECT pg_switch_wal() UNION ALL SELECT pg_switch_wal() FROM gp_dist_random('gp_id');"
+            ;;
+        *)
+            echo "ERROR - Unsupported Greenplum version: ${GP_VERSION}"
+            exit 1
+            ;;
+    esac
 }
 
 compare_data() {

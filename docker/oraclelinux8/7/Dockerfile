@@ -16,7 +16,8 @@ ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
 ARG GPBACKMAN_VERSION="v0.7.2"
 ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
-ARG WALG_VERSION="v3.0.5"
+# Wait new WAL-G release
+ARG WALG_VERSION="66cc6e822a00668c0ac13de9bff1faaebf89dbe8"
 ARG GOSU_VERSION="1.17"
 
 FROM oraclelinux:${OL_VERSION} AS builder
@@ -373,7 +374,7 @@ COPY --from=go_builder \
 COPY --from=go_builder /opt/go/bin/gpbackup_s3_plugin /usr/local/greenplum-db/bin/gpbackup_s3_plugin
 COPY --from=go_builder /usr/local/pxf /usr/local/pxf
 COPY --from=go_builder /tmp/gpbackman/gpbackman /usr/local/greenplum-db/bin/gpbackman
-COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/bin/wal-g
+COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
 COPY --chmod=755 docker/files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker/files/start_gpdb.sh /start_gpdb.sh
 
