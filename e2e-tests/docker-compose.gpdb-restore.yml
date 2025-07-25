@@ -22,7 +22,7 @@ services:
       - ../docker-compose/conf/hostfile_gpinitsystem:/tmp/hostfile_gpinitsystem
       - ../docker-compose/conf/ssh/id_rsa:/home/gpadmin/.ssh/id_rsa
       - ../docker-compose/conf/ssh/id_rsa.pub:/home/gpadmin/.ssh/id_rsa.pub
-      - ./wal-g/conf/wal-g.yaml:/tmp/wal-g.yaml
+      - ./wal-g/conf/${CONFIG_FOLDER}/wal-g.yaml:/tmp/wal-g.yaml
       - ./wal-g/conf/wal-g_restore.json:/tmp/wal-g_restore.json
     depends_on:
       - segment1-restore
@@ -39,7 +39,7 @@ services:
       - GREENPLUM_DEPLOYMENT=segment
     volumes:
       - ../docker-compose/conf/ssh/authorized_keys:/tmp/authorized_keys
-      - ./wal-g/conf/wal-g.yaml:/tmp/wal-g.yaml
+      - ./wal-g/conf/${CONFIG_FOLDER}/wal-g.yaml:/tmp/wal-g.yaml
     stop_grace_period: 60s
     networks:
       - greenplum-restore
@@ -53,7 +53,7 @@ services:
       - GREENPLUM_DEPLOYMENT=segment
     volumes:
       - ../docker-compose/conf/ssh/authorized_keys:/tmp/authorized_keys
-      - ./wal-g/conf/wal-g.yaml:/tmp/wal-g.yaml
+      - ./wal-g/conf/${CONFIG_FOLDER}/wal-g.yaml:/tmp/wal-g.yaml
     stop_grace_period: 60s
     networks:
       - greenplum-restore
