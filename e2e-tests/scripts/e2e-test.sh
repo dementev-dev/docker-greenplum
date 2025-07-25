@@ -111,7 +111,7 @@ list_backup_and_rp() {
 get_backup_name() {
     local container=$1
 
-    local backup_name=$(exec_docker ${container} "wal-g backup-list --config ${WALG_CONFIG}" | tail -n 1 | cut -f 1 -d " ")
+    local backup_name=$(exec_docker ${container} "wal-g backup-list --config ${WALG_CONFIG}" | tail -n 1 | awk '{print $1}')
     if [ -z "$backup_name" ]; then
         echo "ERROR - backup not found"
         return 1
