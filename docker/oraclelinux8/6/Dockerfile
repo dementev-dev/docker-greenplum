@@ -17,6 +17,9 @@ ARG GPBACKUP_S3_PLUGIN_DOWNLOAD_URL="https://github.com/woblerr/gpbackup-s3-plug
 ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
 ARG GPBACKMAN_VERSION="v0.7.2"
+ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
+# Wait new WAL-G release
+ARG WALG_VERSION="66cc6e822a00668c0ac13de9bff1faaebf89dbe8"
 ARG GOSU_VERSION="1.17"
 
 FROM oraclelinux:${OL_VERSION} AS builder
@@ -82,6 +85,8 @@ RUN dnf -y install \
         sudo \
         java-11-openjdk-devel \
         wget \
+        brotli-devel \
+        libsodium-devel \
     && dnf clean all \
     && rm -rf /var/cache/dnf \
     && echo -e "/usr/local/lib\n/usr/local/lib64\n" >> /etc/ld.so.conf.d/local.conf \
@@ -172,6 +177,8 @@ ARG GPBACKMAN_DOWNLOAD_URL
 ARG GPBACKMAN_VERSION
 ARG PXF_DOWNLOAD_URL
 ARG PXF_VERSION
+ARG WALG_DOWNLOAD_URL
+ARG WALG_VERSION
 
 RUN mkdir -p /opt/go \
     && arch="$(uname -m)" \
@@ -208,6 +215,20 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
     && cd /tmp/gpbackman \
     && make build
 
+# wal-g
+# Don't use USE_LZO=1, there is no need to build with WAL-E compatibility
+# See https://github.com/wal-g/wal-g/issues/1412#issuecomment-1401890162
+RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
+    && cd /tmp/wal-g \
+    && git checkout ${WALG_VERSION} \
+    && USE_BROTLI=1 \
+       USE_LIBSODIUM=1 \
+       make deps \
+    && USE_BROTLI=1 \
+       USE_LIBSODIUM=1 \
+       make gp_build \
+    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
+
 # pxf
 # Build pxf without tests
 # Components: external-table, cli, server
@@ -231,6 +252,7 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
 
 FROM oraclelinux:${OL_VERSION} AS final
 
+ARG REPO_BUILD_TAG
 ARG GPDB_VERSION
 ARG GOSU_VERSION
 
@@ -245,7 +267,8 @@ ENV TZ="Etc/UTC" \
     GREENPLUM_DATABASE_NAME="demo" \
     GREENPLUM_GPPERFMON_ENABLE="false" \
     GREENPLUM_DISKQUOTA_ENABLE="false" \
-    GREENPLUM_PXF_ENABLE="false"
+    GREENPLUM_PXF_ENABLE="false" \
+    GREENPLUM_WALG_ENABLE="false"
 
 # Install runtime dependencies
 RUN dnf -y update \
@@ -354,6 +377,7 @@ COPY --from=go_builder \
 COPY --from=go_builder /opt/go/bin/gpbackup_s3_plugin /usr/local/greenplum-db/bin/gpbackup_s3_plugin
 COPY --from=go_builder /usr/local/pxf /usr/local/pxf
 COPY --from=go_builder /tmp/gpbackman/gpbackman /usr/local/greenplum-db/bin/gpbackman
+COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
 COPY --chmod=755 docker/files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker/files/start_gpdb.sh /start_gpdb.sh
 
