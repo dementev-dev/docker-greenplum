@@ -18,7 +18,7 @@ ARG GPBACKMAN_VERSION="v0.8.1"
 ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
 # Wait new WAL-G release
 ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
-ARG GOSU_VERSION="1.17"
+ARG GOSU_VERSION="1.19"
 
 FROM oraclelinux:${OL_VERSION} AS builder
 
