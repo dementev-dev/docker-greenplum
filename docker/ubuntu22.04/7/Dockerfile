@@ -1,6 +1,6 @@
 ARG REPO_BUILD_TAG
 ARG UBUNTU_VERSION="22.04"
-ARG GOLANG_VERSION="1.23.4"
+ARG GOLANG_VERSION="1.24.11"
 ARG GPXERCES_DOWNLOAD_URL="https://github.com/woblerr/gp-xerces/archive/refs/tags"
 ARG GPXERCES_VERSION="v3.1.2-p1"
 ARG GPDB_DOWNLOAD_URL="https://github.com/woblerr/gpdb/archive/refs/tags"
@@ -14,10 +14,10 @@ ARG GPBACKUP_VERSION="1.30.5"
 ARG GPBACKUP_S3_PLUGIN_DOWNLOAD_URL="https://github.com/woblerr/gpbackup-s3-plugin/archive/refs/tags"
 ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
-ARG GPBACKMAN_VERSION="v0.7.2"
+ARG GPBACKMAN_VERSION="v0.8.1"
 ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
 # Wait new WAL-G release
-ARG WALG_VERSION="66cc6e822a00668c0ac13de9bff1faaebf89dbe8"
+ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
 
 FROM ubuntu:${UBUNTU_VERSION} AS builder
 
