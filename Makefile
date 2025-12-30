@@ -44,11 +44,11 @@ test-e2e-walg:
 
 define build_image
 	@echo "Build GPDB $(1):$(2) $(3) docker image"
-	docker buildx build -f docker/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greenplum:$(2) .
+	docker buildx build -f docker/greenplum/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greenplum:$(2) .
 endef
 
 define build_image_with_tag
 	@echo "Build GPDB $(1):$(2) $(3) docker image"
-	docker buildx build -f docker/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greenplum:$(2)-$(3) .
+	docker buildx build -f docker/greenplum/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greenplum:$(2)-$(3) .
 endef
 

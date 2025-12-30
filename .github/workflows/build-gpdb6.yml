@@ -47,7 +47,7 @@ jobs:
     - name: Build greenplum image (Test Build)
       run: |
         docker buildx build \
-          -f docker/${OS_TAG}/6/Dockerfile \
+          -f docker/greenplum/${OS_TAG}/6/Dockerfile \
           --platform ${{ matrix.platform }} \
           --build-arg GPDB_VERSION=${TAG} \
           --build-arg REPO_BUILD_TAG=${REPO_TAG} \
@@ -64,7 +64,7 @@ jobs:
         DH_BASE="${DOCKERHUB_USER}/greenplum"
 
         docker buildx build --push \
-            -f docker/${OS_TAG}/6/Dockerfile \
+            -f docker/greenplum/${OS_TAG}/6/Dockerfile \
             --platform ${{ matrix.platform }} \
             --build-arg GPDB_VERSION=${TAG} \
             --build-arg REPO_BUILD_TAG=${REPO_TAG} \
