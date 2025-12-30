@@ -51,7 +51,7 @@ jobs:
           --platform ${{ matrix.platform }} \
           --build-arg GPDB_VERSION=${TAG} \
           --build-arg REPO_BUILD_TAG=${REPO_TAG} \
-          -t greenplum:${TAG} .
+          -t greenplum:${TAG}-${ARCH} .
       env: 
         TAG: ${{ matrix.greenplum_version }}
         OS_TAG: ${{ matrix.os_version }}
