@@ -2,8 +2,13 @@
 
 [![build-gpdb6](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb6.yml/badge.svg)](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb6.yml)
 [![build-gpdb7](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb7.yml/badge.svg)](https://github.com/woblerr/docker-greenplum/actions/workflows/build-gpdb7.yml)
+[![build-greengage6](https://github.com/woblerr/docker-greenplum/actions/workflows/build-greengage6.yml/badge.svg)](https://github.com/woblerr/docker-greenplum/actions/workflows/build-greengage6.yml)
 
-This project provides a Docker image for running Greenplum Database (GPDB) in containers. It supports both single-node and multi-node deployments. The image can be use for development, testing, and learning purposes.
+This project provides Docker images for running Greenplum Database (GPDB) and its forks in containers. It supports both single-node and multi-node deployments. The images can be use for development, testing, and learning purposes.
+
+**Supported distributions:**
+- Greenplum Database (GPDB)
+- [Greengage](https://github.com/GreengageDB/greengage) (Greenplum fork)
 
 The Greenplum in docker provides the following features:
 - single-node deployment;
@@ -52,8 +57,15 @@ Greenplum 7:
 |---|---|---| ---|
 | 7.1.0| `7.1.0`, `7.1.0-ubuntu22.04` | `7.1.0-oraclelinux8` |  `linux/amd64`, `linux/arm64` |
 
+Greengage 6:
+| Greengage Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
+|---|---|---| ---|
+| 6.29.2| `6.29.2`, `6.29.2-ubuntu22.04` | - | `linux/amd64`, `linux/arm64` |
+
 ## Pull
 Change `tag` to the version you need.
+
+**Greenplum:**
 
 * Docker Hub:
 
@@ -65,6 +77,20 @@ docker pull woblerr/greenplum:tag
 
 ```bash
 docker pull ghcr.io/woblerr/greenplum:tag
+```
+
+**Greengage:**
+
+* Docker Hub:
+
+```bash
+docker pull woblerr/greengage:tag
+```
+
+* GitHub Registry:
+
+```bash
+docker pull ghcr.io/woblerr/greengage:tag
 ```
 
 ## Run
@@ -216,6 +242,8 @@ docker compose -f ./docker-compose/docker-compose.with_mirrors.yaml up -d
 
 ## Build
 
+**Greenplum:**
+
 For Ubuntu based images:
 ```bash
 make build_gpdb_6_ubuntu TAG_GPDB_6=6.27.1
@@ -232,9 +260,23 @@ make build_gpdb_6_oraclelinux TAG_GPDB_6=6.27.1
 make build_gpdb_7_oraclelinux TAG_GPDB_7=7.1.0
 ```
 
-Simple manual build:
+**Greengage:**
+
+For Ubuntu based images:
+```bash
+make build_greengage_6_ubuntu TAG_GREENGAGE_6=6.29.2
+```
+
+**Manual build examples:**
+
+Greenplum simple manual build:
 ```bash
 docker buildx build -f docker/greenplum/ubuntu22.04/6/Dockerfile -t greenplum:6.27.1 .
+```
+
+Greengage simple manual build:
+```bash
+docker buildx build -f docker/greengage/ubuntu22.04/6/Dockerfile -t greengage:6.29.2 .
 ```
 
 Manual build with specific component version for `linux/amd64` platform:

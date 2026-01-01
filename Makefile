@@ -2,6 +2,8 @@ GPDB_6_VERSIONS = 6.27.1
 TAG_GPDB_6 ?= 6.27.1
 GPDB_7_VERSIONS = 7.1.0
 TAG_GPDB_7 ?= 7.1.0
+GREENGAGE_6_VERSIONS = 6.29.2
+TAG_GREENGAGE_6 ?= 6.29.2
 UBUNTU_OS_VERSION = ubuntu22.04
 OL_OS_VERSION = oraclelinux8
 UID := $(shell id -u)
@@ -33,6 +35,14 @@ build_gpdb_6_oraclelinux:
 build_gpdb_7_oraclelinux:
 	$(call build_image_with_tag,7,$(TAG_GPDB_7),$(OL_OS_VERSION))
 
+.PHONY: build_greengage_6_ubuntu
+build_greengage_6_ubuntu:
+	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(UBUNTU_OS_VERSION))
+
+#.PHONY: build_greengage_6_oraclelinux
+#build_greengage_6_oraclelinux:
+#	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(OL_OS_VERSION))
+
 .PHONY: test-e2e
 test-e2e:
 	$(MAKE) -C e2e-tests test-e2e
@@ -50,5 +60,10 @@ endef
 define build_image_with_tag
 	@echo "Build GPDB $(1):$(2) $(3) docker image"
 	docker buildx build -f docker/greenplum/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greenplum:$(2)-$(3) .
+endef
+
+define build_greengage_image_with_tag
+	@echo "Build Greengage $(1):$(2) $(3) docker image"
+	docker buildx build -f docker/greengage/$(3)/$(1)/Dockerfile --build-arg GPDB_VERSION=$(2) -t greengage:$(2)-$(3) .
 endef
 
