@@ -222,7 +222,7 @@ Segments mounts:
        - ./conf/ssh/authorized_keys:/tmp/authorized_keys
 ```
 
-The image version and `CONFIG_FOLDER` variable should be set in the `.env` file. See the example `.env` file in the `docker-compose` directory.
+The image name, version and `CONFIG_FOLDER` variable should be set in the `.env` file. See the example `.env` file in the `docker-compose` directory.
 
 #### Run
 Run  cluster with 1 master and 2 segments without mirroring:
