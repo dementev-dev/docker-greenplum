@@ -136,7 +136,7 @@ RUN wget ${ZSTD_DOWNLOAD_URL}/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz -O /t
     && cd /tmp/zstd-${ZSTD_VERSION} \
     && make -j2 \
     && make install prefix=/usr/local \
-    && ldconfig \   
+    && ldconfig \
     && rm -rf /tmp/zstd-${ZSTD_VERSION} /tmp/zstd-${ZSTD_VERSION}.tar.gz
 
 # libsigar
@@ -205,8 +205,8 @@ ARG GPBACKMAN_DOWNLOAD_URL
 ARG GPBACKMAN_VERSION
 ARG PXF_DOWNLOAD_URL
 ARG PXF_VERSION
-ARG WALG_DOWNLOAD_URL
-ARG WALG_VERSION
+#ARG WALG_DOWNLOAD_URL
+#ARG WALG_VERSION
 
 RUN mkdir -p /opt/go \
     && arch="$(uname -m)" \
