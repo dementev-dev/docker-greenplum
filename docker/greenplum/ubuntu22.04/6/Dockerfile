@@ -7,7 +7,7 @@ ARG LIBSIGAR_DOWNLOAD_URL="https://github.com/boundary/sigar"
 ARG LIBSIGAR_COMMIT_HASH="e8961a6674cc4d292e61b353b5c36bfc345434cc"
 ARG GPDB_DOWNLOAD_URL="https://github.com/woblerr/gpdb/archive/refs/tags"
 ARG GPDB_VERSION="6.27.1"
-ARG DISKQUOTA_DOWNLOAN_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
+ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
 ARG DISKQUOTA_VERSION="2.3.0"
 ARG PXF_DOWNLOAD_URL="https://github.com/woblerr/pxf/archive/refs/tags"
 ARG PXF_VERSION="release-6.10.1"
@@ -29,7 +29,7 @@ ARG LIBSIGAR_DOWNLOAD_URL
 ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
-ARG DISKQUOTA_DOWNLOAN_URL
+ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
 
 RUN apt-get update \
@@ -143,7 +143,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         /tmp/gpdb-${GPDB_VERSION}.tar.gz
 
 # diskquota
-RUN wget ${DISKQUOTA_DOWNLOAN_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
+RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
     && mkdir -p /tmp/diskquota \
     && tar -xzf /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz --strip-components=1 -C /tmp/diskquota \
     && mkdir -p /tmp/diskquota/build \

@@ -26,7 +26,7 @@ ARG GPDB_DOWNLOAD_URL="https://github.com/GreengageDB/greengage/archive/refs/tag
 ARG GPDB_VERSION="6.29.2"
 # There is no fresh release of diskquota in GreengageDB repo, use Arenadata's fork
 # When new release will be available, switch to GreengageDB repo
-ARG DISKQUOTA_DOWNLOAN_URL="https://github.com/arenadata/diskquota/archive/refs/tags"
+ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/arenadata/diskquota/archive/refs/tags"
 ARG DISKQUOTA_VERSION="2.3.0_arenadata9"
 ARG PXF_DOWNLOAD_URL="https://github.com/GreengageDB/pxf/archive/refs/tags"
 ARG PXF_VERSION="6.14.1"
@@ -53,7 +53,7 @@ ARG LIBSIGAR_DOWNLOAD_URL
 ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
-ARG DISKQUOTA_DOWNLOAN_URL
+ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
 ARG ZSTD_VERSION
 ARG ZSTD_DOWNLOAD_URL
@@ -181,7 +181,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         /tmp/gpdb-${GPDB_VERSION}.tar.gz
 
 # diskquota
-RUN wget ${DISKQUOTA_DOWNLOAN_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
+RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
     && mkdir -p /tmp/diskquota \
     && tar -xzf /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz --strip-components=1 -C /tmp/diskquota \
     && mkdir -p /tmp/diskquota/build \
