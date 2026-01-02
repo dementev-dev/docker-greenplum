@@ -39,9 +39,9 @@ build_gpdb_7_oraclelinux:
 build_greengage_6_ubuntu:
 	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(UBUNTU_OS_VERSION))
 
-#.PHONY: build_greengage_6_oraclelinux
-#build_greengage_6_oraclelinux:
-#	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(OL_OS_VERSION))
+.PHONY: build_greengage_6_oraclelinux
+build_greengage_6_oraclelinux:
+	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(OL_OS_VERSION))
 
 .PHONY: test-e2e
 test-e2e:

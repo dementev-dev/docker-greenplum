@@ -60,7 +60,7 @@ Greenplum 7:
 Greengage 6:
 | Greengage Version | Ubuntu 22.04 | Oracle Linux 8 | Platform |
 |---|---|---| ---|
-| 6.29.2| `6.29.2`, `6.29.2-ubuntu22.04` | - | `linux/amd64`, `linux/arm64` |
+| 6.29.2| `6.29.2`, `6.29.2-ubuntu22.04` | `6.29.2-oraclelinux8` | `linux/amd64`, `linux/arm64` |
 
 ## Pull
 Change `tag` to the version you need.
@@ -267,6 +267,11 @@ For Ubuntu based images:
 make build_greengage_6_ubuntu TAG_GREENGAGE_6=6.29.2
 ```
 
+For Oracle Linux based images:
+```bash
+make build_greengage_6_oraclelinux TAG_GREENGAGE_6=6.29.2
+```
+
 **Manual build examples:**
 
 Greenplum simple manual build:
@@ -277,6 +282,11 @@ docker buildx build -f docker/greenplum/ubuntu22.04/6/Dockerfile -t greenplum:6.
 Greengage simple manual build:
 ```bash
 docker buildx build -f docker/greengage/ubuntu22.04/6/Dockerfile -t greengage:6.29.2 .
+```
+
+Greengage OracleLinux manual build:
+```bash
+docker buildx build -f docker/greengage/oraclelinux8/6/Dockerfile -t greengage:6.29.2-oraclelinux8 .
 ```
 
 Manual build with specific component version for `linux/amd64` platform:
