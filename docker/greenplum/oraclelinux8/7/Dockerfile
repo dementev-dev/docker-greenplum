@@ -5,7 +5,7 @@ ARG GPXERCES_DOWNLOAD_URL="https://github.com/woblerr/gp-xerces/archive/refs/tag
 ARG GPXERCES_VERSION="v3.1.2-p1"
 ARG GPDB_DOWNLOAD_URL="https://github.com/woblerr/gpdb/archive/refs/tags"
 ARG GPDB_VERSION="7.1.0"
-ARG DISKQUOTA_DOWNLOAN_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
+ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
 ARG DISKQUOTA_VERSION="2.3.0"
 ARG PXF_DOWNLOAD_URL="https://github.com/woblerr/pxf/archive/refs/tags"
 ARG PXF_VERSION="release-6.10.1"
@@ -26,7 +26,7 @@ ARG GPXERCES_DOWNLOAD_URL
 ARG GPXERCES_VERSION
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
-ARG DISKQUOTA_DOWNLOAN_URL
+ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
 
 # Enable EPEL and Oracle CodeReady repositories
@@ -139,7 +139,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
 RUN PATH=${PATH}:/usr/local/greenplum-db/bin pip3 install --no-cache-dir PyGreSQL
 
 # diskquota
-RUN wget ${DISKQUOTA_DOWNLOAN_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
+RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
     && mkdir -p /tmp/diskquota \
     && tar -xzf /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz --strip-components=1 -C /tmp/diskquota \
     && mkdir -p /tmp/diskquota/build \

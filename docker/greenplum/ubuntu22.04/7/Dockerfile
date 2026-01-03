@@ -3,11 +3,9 @@ ARG UBUNTU_VERSION="22.04"
 ARG GOLANG_VERSION="1.24.11"
 ARG GPXERCES_DOWNLOAD_URL="https://github.com/woblerr/gp-xerces/archive/refs/tags"
 ARG GPXERCES_VERSION="v3.1.2-p1"
-ARG LIBSIGAR_DOWNLOAD_URL="https://github.com/boundary/sigar"
-ARG LIBSIGAR_COMMIT_HASH="e8961a6674cc4d292e61b353b5c36bfc345434cc"
 ARG GPDB_DOWNLOAD_URL="https://github.com/woblerr/gpdb/archive/refs/tags"
-ARG GPDB_VERSION="6.27.1"
-ARG DISKQUOTA_DOWNLOAN_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
+ARG GPDB_VERSION="7.1.0"
+ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
 ARG DISKQUOTA_VERSION="2.3.0"
 ARG PXF_DOWNLOAD_URL="https://github.com/woblerr/pxf/archive/refs/tags"
 ARG PXF_VERSION="release-6.10.1"
@@ -25,11 +23,9 @@ FROM ubuntu:${UBUNTU_VERSION} AS builder
 
 ARG GPXERCES_DOWNLOAD_URL
 ARG GPXERCES_VERSION
-ARG LIBSIGAR_DOWNLOAD_URL
-ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
-ARG DISKQUOTA_DOWNLOAN_URL
+ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
 
 RUN apt-get update \
@@ -71,8 +67,15 @@ RUN apt-get update \
         openssh-client \
         openssh-server \
         openssl \
-        python2.7 \
-        python2.7-dev \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-psutil \
+        python3-pygresql \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-yaml \
+        pkg-config \
         git \
         sudo \
         openjdk-11-jdk \
@@ -83,17 +86,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && echo -e "/usr/local/lib\n/usr/local/lib64\n" >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
-
-# python2.7
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output /tmp/get-pip.py \
-    && python2.7 /tmp/get-pip.py \
-    && pip2.7 install \
-        pyyaml==5.3.1 \
-        conan==1.48.2 \
-        psutil==5.9.6 \
-        setuptools==36.6.0 \
-    && ln -s /usr/bin/python2.7 /usr/bin/python \
-    && rm -rf /tmp/get-pip.py
 
 # xerces-c
 RUN wget ${GPXERCES_DOWNLOAD_URL}/${GPXERCES_VERSION}.tar.gz -O /tmp/gp-xerces-${GPXERCES_VERSION}.tar.gz \
@@ -107,17 +99,6 @@ RUN wget ${GPXERCES_DOWNLOAD_URL}/${GPXERCES_VERSION}.tar.gz -O /tmp/gp-xerces-$
         /tmp/gp-xerces \
         /tmp/gp-xerces-${GPXERCES_VERSION}.tar.gz
 
-# libsigar
-RUN git clone ${LIBSIGAR_DOWNLOAD_URL} /tmp/sigar \
-    && cd /tmp/sigar \
-    && git checkout ${LIBSIGAR_COMMIT_HASH} \
-    && mkdir -p /tmp/sigar/build \
-    && cd /tmp/sigar/build \
-    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. \
-    && make -j2 \
-    && make install \
-    && rm -rf /tmp/sigar
-
 # greenplum
 RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION}.tar.gz \
     && mkdir -p /tmp/gpdb \
@@ -126,7 +107,6 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
     && echo "${GPDB_VERSION} build dev" > /tmp/gpdb/VERSION \
     && ./configure --prefix=/usr/local/greenplum-db \
         --enable-ic-proxy \
-        --enable-gpperfmon \
         --with-openssl \
         --with-perl \
         --with-python \
@@ -136,6 +116,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         --with-gssapi \
         --with-pythonsrc-ext \
         --with-uuid=e2fs \
+        --enable-gpfdist \
     && make -j2 \
     && make install \
     && rm -rf \
@@ -143,7 +124,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         /tmp/gpdb-${GPDB_VERSION}.tar.gz
 
 # diskquota
-RUN wget ${DISKQUOTA_DOWNLOAN_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
+RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
     && mkdir -p /tmp/diskquota \
     && tar -xzf /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz --strip-components=1 -C /tmp/diskquota \
     && mkdir -p /tmp/diskquota/build \
@@ -215,8 +196,7 @@ RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
 
 # pxf
 # Build pxf without tests
-# Components: external-table, cli, server
-# fdw extension is not needed for gpdb 6
+# Components: external-table, fdw, cli, servers
 RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.tar.gz \
     && mkdir -p /tmp/pxf \
     && tar -xzf /tmp/pxf-${PXF_VERSION}.tar.gz --strip-components=1 -C /tmp/pxf \
@@ -226,6 +206,9 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
        make -j2 -C external-table install \
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
+       make -j2 -C fdw install \
+    && PXF_HOME=/usr/local/pxf \
+       PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
        make -j2 -C cli install \
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
@@ -233,6 +216,7 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
     && rm -rf \
         /tmp/pxf \
         /tmp/pxf-${PXF_VERSION}.tar.gz
+        
 
 FROM ubuntu:${UBUNTU_VERSION} AS final
 
@@ -289,7 +273,13 @@ RUN apt-get update \
         less \
         locales \
         iproute2 \
-        python2.7 \
+        libcurl3-gnutls \
+        python3 \
+        python3-psutil \
+        python3-pygresql \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-yaml \
         gosu \
         ca-certificates \
         tzdata \
@@ -307,6 +297,7 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> /etc/ssh/sshd_config \
     && echo "${GREENPLUM_USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
     && echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc \
+    && ARCH=$(dpkg --print-architecture) \
     && arch="$(dpkg --print-architecture)" \
     && case "${arch}" in \
         arm64) echo "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-arm64" >> /home/${GREENPLUM_USER}/.bashrc ;; \
@@ -322,7 +313,6 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
         /home/${GREENPLUM_USER}/ \
         ${GREENPLUM_DATA_DIRECTORY} \
         /docker-entrypoint-initdb.d \
-    && ln -s /usr/bin/python2.7 /usr/bin/python \
     && unlink /etc/localtime \
     && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo "${TZ}" > /etc/timezone
@@ -331,7 +321,6 @@ COPY --from=go_builder /usr/local/greenplum-db /usr/local/greenplum-db
 COPY --from=builder \
     /usr/local/lib/libxerces-c.so \ 
     /usr/local/lib/libxerces-c-3.1.so \
-    /usr/local/lib/libsigar.so \
     /usr/local/greenplum-db/lib/
 COPY --from=go_builder \
     /opt/go/bin/gpbackup \

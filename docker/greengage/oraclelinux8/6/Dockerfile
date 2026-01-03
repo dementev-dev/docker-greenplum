@@ -1,37 +1,62 @@
+# Differences from the vanilla Greenplum image
+# ----
+# Start from greengage 6.28.1 the dependence of patched xerces is removed.
+# So we can use the standard xerces-c package
+# See https://github.com/GreengageDB/greengage/commit/431a01f4394461092842718aa7c37a0a98e2bfaa
+# and https://github.com/GreengageDB/greengage/commit/dff485b8f1e1e4ebe771de9a3ba93af42c7624d1
+# The build step for patched xerces has been removed for greengage, unlike the vanilla greenplum.
+# ----
+# PXF requires Java 17
+# See https://github.com/GreengageDB/pxf/commit/1a873abd57983bf658822cb9b02a11b011116812
+# ----
+# Wal-G currently disabled
+# ----
+# For compiling Greengage zstd static library (.a files) is needed.
+# See https://github.com/GreengageDB/greengage/commit/7185bf85ea8f4abdfdeb08d5a53180ea2f389728
+# On Ubuntu it's not needed as libzstd-dev contains .a files
+# But on Oracle Linux we need to build and install zstd from sources, because
+# the standard package libzstd-devel doesn't contain static library files.
+# ----
 ARG REPO_BUILD_TAG
 ARG OL_VERSION="8"
 ARG GOLANG_VERSION="1.24.11"
-ARG GPXERCES_DOWNLOAD_URL="https://github.com/woblerr/gp-xerces/archive/refs/tags"
-ARG GPXERCES_VERSION="v3.1.2-p1"
 ARG LIBSIGAR_DOWNLOAD_URL="https://github.com/boundary/sigar"
 ARG LIBSIGAR_COMMIT_HASH="e8961a6674cc4d292e61b353b5c36bfc345434cc"
-ARG GPDB_DOWNLOAD_URL="https://github.com/woblerr/gpdb/archive/refs/tags"
-ARG GPDB_VERSION="6.27.1"
-ARG DISKQUOTA_DOWNLOAN_URL="https://github.com/woblerr/diskquota/archive/refs/tags"
-ARG DISKQUOTA_VERSION="2.3.0"
-ARG PXF_DOWNLOAD_URL="https://github.com/woblerr/pxf/archive/refs/tags"
-ARG PXF_VERSION="release-6.10.1"
-ARG GPBACKUP_DOWNLOAD_URL="https://github.com/woblerr/gpbackup/archive/refs/tags"
-ARG GPBACKUP_VERSION="1.30.5"
+ARG GPDB_DOWNLOAD_URL="https://github.com/GreengageDB/greengage/archive/refs/tags"
+ARG GPDB_VERSION="6.29.2"
+# There is no fresh release of diskquota in GreengageDB repo, use Arenadata's fork
+# When new release will be available, switch to GreengageDB repo
+ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/arenadata/diskquota/archive/refs/tags"
+ARG DISKQUOTA_VERSION="2.3.0_arenadata9"
+ARG PXF_DOWNLOAD_URL="https://github.com/GreengageDB/pxf/archive/refs/tags"
+ARG PXF_VERSION="6.14.1"
+ARG GPBACKUP_DOWNLOAD_URL="https://github.com/GreengageDB/gpbackup/archive/refs/tags"
+ARG GPBACKUP_VERSION="1.31.0"
+# There is no fresh release of gpbackup-s3-plugin in GreengageDB repo
+# When new release will be available, switch to GreengageDB repo
 ARG GPBACKUP_S3_PLUGIN_DOWNLOAD_URL="https://github.com/woblerr/gpbackup-s3-plugin/archive/refs/tags"
 ARG GPBACKUP_S3_PLUGIN_VERSION="1.10.2"
 ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/tags"
 ARG GPBACKMAN_VERSION="v0.8.1"
-ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
-# Wait new WAL-G release
-ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
+# Greengage use pgBackRest fork for physical backups.
+# It is not clear whether wal-g will work correctly.
+#ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
+## Wait new WAL-G release
+#ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
 ARG GOSU_VERSION="1.19"
+ARG ZSTD_VERSION=1.5.7
+ARG ZSTD_DOWNLOAD_URL="https://github.com/facebook/zstd/releases/download/"
 
 FROM oraclelinux:${OL_VERSION} AS builder
 
-ARG GPXERCES_DOWNLOAD_URL
-ARG GPXERCES_VERSION
 ARG LIBSIGAR_DOWNLOAD_URL
 ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
-ARG DISKQUOTA_DOWNLOAN_URL
+ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
+ARG ZSTD_VERSION
+ARG ZSTD_DOWNLOAD_URL
 
 # Enable EPEL and Oracle CodeReady repositories
 RUN dnf -y install \
@@ -67,9 +92,11 @@ RUN dnf -y install \
         readline-devel \
         openssl-devel \
         libuv-devel \
+        # Use standard xerces-c-devel package (see comment on the top of the file)
+        xerces-c-devel \
         libxml2-devel \
         libyaml-devel \
-        libzstd-devel \
+        # libzstd-devel \
         zlib-devel \
         openldap-devel \
         libuuid-devel \
@@ -83,7 +110,7 @@ RUN dnf -y install \
         python2 \
         python2-devel \
         sudo \
-        java-11-openjdk-devel \
+        java-17-openjdk-devel \
         wget \
         brotli-devel \
         libsodium-devel \
@@ -103,18 +130,14 @@ RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output /tmp/get-pip.py \
     && ln -s /usr/bin/python2 /usr/bin/python \
     && rm -rf /tmp/get-pip.py
 
-# xerces-c
-RUN wget ${GPXERCES_DOWNLOAD_URL}/${GPXERCES_VERSION}.tar.gz -O /tmp/gp-xerces-${GPXERCES_VERSION}.tar.gz \
-    && mkdir -p /tmp/gp-xerces \
-    && tar -xzf /tmp/gp-xerces-${GPXERCES_VERSION}.tar.gz --strip-components=1 -C /tmp/gp-xerces \
-    && cd /tmp/gp-xerces \
-    && ./configure --prefix=/usr/local \
+# zstd (for static library)
+RUN wget ${ZSTD_DOWNLOAD_URL}/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSION}.tar.gz \
+    && tar -xzf /tmp/zstd-${ZSTD_VERSION}.tar.gz -C /tmp \
+    && cd /tmp/zstd-${ZSTD_VERSION} \
     && make -j2 \
-    && make install \
+    && make install prefix=/usr/local \
     && ldconfig \
-    && rm -rf \
-        /tmp/gp-xerces \
-        /tmp/gp-xerces-${GPXERCES_VERSION}.tar.gz
+    && rm -rf /tmp/zstd-${ZSTD_VERSION} /tmp/zstd-${ZSTD_VERSION}.tar.gz
 
 # libsigar
 RUN git clone ${LIBSIGAR_DOWNLOAD_URL} /tmp/sigar \
@@ -128,7 +151,7 @@ RUN git clone ${LIBSIGAR_DOWNLOAD_URL} /tmp/sigar \
     && ldconfig \
     && rm -rf /tmp/sigar
 
-# greenplum
+# greengage
 RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION}.tar.gz \
     && mkdir -p /tmp/gpdb \
     && tar -xzf /tmp/gpdb-${GPDB_VERSION}.tar.gz --strip-components=1 -C /tmp/gpdb \
@@ -148,12 +171,17 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         --with-uuid=e2fs \
     && make -j2 \
     && make install \
+    # Create symlink greenplum_path.sh -> greengage_path.sh
+    # https://github.com/GreengageDB/greengage/commit/75eb38e283ebb0ccd8c9b795345211508fbc548f
+    # greenplum_path.sh was renamed to greengage_path.sh
+    # For now, it's enough to create a symlink for compatibility
+    && ln -s /usr/local/greenplum-db/greengage_path.sh /usr/local/greenplum-db/greenplum_path.sh \
     && rm -rf \
         /tmp/gpdb \
         /tmp/gpdb-${GPDB_VERSION}.tar.gz
 
 # diskquota
-RUN wget ${DISKQUOTA_DOWNLOAN_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
+RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
     && mkdir -p /tmp/diskquota \
     && tar -xzf /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz --strip-components=1 -C /tmp/diskquota \
     && mkdir -p /tmp/diskquota/build \
@@ -177,8 +205,8 @@ ARG GPBACKMAN_DOWNLOAD_URL
 ARG GPBACKMAN_VERSION
 ARG PXF_DOWNLOAD_URL
 ARG PXF_VERSION
-ARG WALG_DOWNLOAD_URL
-ARG WALG_VERSION
+#ARG WALG_DOWNLOAD_URL
+#ARG WALG_VERSION
 
 RUN mkdir -p /opt/go \
     && arch="$(uname -m)" \
@@ -215,19 +243,19 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
     && cd /tmp/gpbackman \
     && make build
 
-# wal-g
-# Don't use USE_LZO=1, there is no need to build with WAL-E compatibility
-# See https://github.com/wal-g/wal-g/issues/1412#issuecomment-1401890162
-RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
-    && cd /tmp/wal-g \
-    && git checkout ${WALG_VERSION} \
-    && USE_BROTLI=1 \
-       USE_LIBSODIUM=1 \
-       make deps \
-    && USE_BROTLI=1 \
-       USE_LIBSODIUM=1 \
-       make gp_build \
-    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
+## wal-g
+## Don't use USE_LZO=1, there is no need to build with WAL-E compatibility
+## See https://github.com/wal-g/wal-g/issues/1412#issuecomment-1401890162
+#RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
+#    && cd /tmp/wal-g \
+#    && git checkout ${WALG_VERSION} \
+#    && USE_BROTLI=1 \
+#       USE_LIBSODIUM=1 \
+#       make deps \
+#    && USE_BROTLI=1 \
+#       USE_LIBSODIUM=1 \
+#       make gp_build \
+#    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
 
 # pxf
 # Build pxf without tests
@@ -271,7 +299,13 @@ ENV TZ="Etc/UTC" \
     GREENPLUM_WALG_ENABLE="false"
 
 # Install runtime dependencies
-RUN dnf -y update \
+RUN dnf -y install \
+        oracle-epel-release-el8 \
+        dnf-plugins-core \
+    && dnf config-manager --set-enabled \
+        ol8_codeready_builder \
+        ol8_developer_EPEL \
+    && dnf -y update \
     && dnf -y install \
         apr \
         apr-util \
@@ -283,8 +317,11 @@ RUN dnf -y update \
         readline \
         openssl-libs \
         libuv \
+        # Use standard xerces-c package (see comment on the top of the file)
+        xerces-c \
         libxml2 \
         libyaml \
+        # It's enough to have only shared library for zstd at runtime
         libzstd \
         zlib \
         openldap \
@@ -313,7 +350,7 @@ RUN dnf -y update \
         hostname \
         ca-certificates \
         tzdata \
-        java-11-openjdk-headless \
+        java-17-openjdk-headless \
     && dnf clean all \
     && rm -rf /var/cache/dnf
 
@@ -348,7 +385,7 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> /etc/ssh/sshd_config \
     && echo "${GREENPLUM_USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
     && echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc \
-    && echo "export JAVA_HOME=/usr/lib/jvm/jre-11-openjdk" >> /home/${GREENPLUM_USER}/.bashrc \
+    && echo "export JAVA_HOME=/usr/lib/jvm/jre-17-openjdk" >> /home/${GREENPLUM_USER}/.bashrc \
     && echo 'export PATH="/usr/local/pxf/bin:${PATH}"' >> /home/${GREENPLUM_USER}/.bashrc \
     && echo "export PXF_BASE=${GREENPLUM_DATA_DIRECTORY}/pxf" >> /home/${GREENPLUM_USER}/.bashrc \
     && mkdir -p ${GREENPLUM_DATA_DIRECTORY} \
@@ -365,8 +402,6 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
 
 COPY --from=go_builder /usr/local/greenplum-db /usr/local/greenplum-db
 COPY --from=builder \
-    /usr/local/lib/libxerces-c.so \ 
-    /usr/local/lib/libxerces-c-3.1.so \
     /usr/local/lib/libsigar.so \
     /usr/local/greenplum-db/lib/
 COPY --from=go_builder \
@@ -377,7 +412,7 @@ COPY --from=go_builder \
 COPY --from=go_builder /opt/go/bin/gpbackup_s3_plugin /usr/local/greenplum-db/bin/gpbackup_s3_plugin
 COPY --from=go_builder /usr/local/pxf /usr/local/pxf
 COPY --from=go_builder /tmp/gpbackman/gpbackman /usr/local/greenplum-db/bin/gpbackman
-COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
+#COPY --from=go_builder /tmp/wal-g/main/gp/wal-g /usr/local/greenplum-db/bin/wal-g
 COPY --chmod=755 docker/files/entrypoint.sh /entrypoint.sh
 COPY --chmod=755 docker/files/start_gpdb.sh /start_gpdb.sh
 
