@@ -42,7 +42,7 @@ ARG GPBACKMAN_VERSION="v0.8.1"
 ## Wait new WAL-G release
 #ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
 ARG GOSU_VERSION="1.19"
-ARG ZSTD_VERSION="1.5.7"
+ARG ZSTD_VERSION="v1.5.7"
 ARG ZSTD_DOWNLOAD_URL="https://github.com/facebook/zstd/archive/refs/tags"
 
 FROM oraclelinux:${OL_VERSION} AS builder
