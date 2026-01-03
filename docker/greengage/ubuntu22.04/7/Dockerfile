@@ -1,29 +1,19 @@
 # Differences from the vanilla Greenplum image
 # ----
-# Start from greengage 6.28.1 the dependence of patched xerces is removed.
-# So we can use the standard xerces-c package
+# Greengage 7 uses standard xerces-c package (no patched version needed)
 # See https://github.com/GreengageDB/greengage/commit/431a01f4394461092842718aa7c37a0a98e2bfaa
 # and https://github.com/GreengageDB/greengage/commit/dff485b8f1e1e4ebe771de9a3ba93af42c7624d1
-# The build step for patched xerces has been removed for greengage, unlike the vanilla greenplum.
 # ----
 # PXF requires Java 17
 # See https://github.com/GreengageDB/pxf/commit/1a873abd57983bf658822cb9b02a11b011116812
 # ----
 # Wal-G currently disabled
 # ----
-# For compiling Greengage zstd static library (.a files) is needed.
-# See https://github.com/GreengageDB/greengage/commit/7185bf85ea8f4abdfdeb08d5a53180ea2f389728
-# On Ubuntu it's not needed as libzstd-dev contains .a files
-# But on Oracle Linux we need to build and install zstd from sources, because
-# the standard package libzstd-devel doesn't contain static library files.
-# ----
 ARG REPO_BUILD_TAG
-ARG OL_VERSION="8"
+ARG UBUNTU_VERSION="22.04"
 ARG GOLANG_VERSION="1.24.11"
-ARG LIBSIGAR_DOWNLOAD_URL="https://github.com/boundary/sigar"
-ARG LIBSIGAR_COMMIT_HASH="e8961a6674cc4d292e61b353b5c36bfc345434cc"
 ARG GPDB_DOWNLOAD_URL="https://github.com/GreengageDB/greengage/archive/refs/tags"
-ARG GPDB_VERSION="6.29.2"
+ARG GPDB_VERSION="7.4.1"
 # There is no fresh release of diskquota in GreengageDB repo, use Arenadata's fork
 # When new release will be available, switch to GreengageDB repo
 ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/arenadata/diskquota/archive/refs/tags"
@@ -43,30 +33,16 @@ ARG GPBACKMAN_VERSION="v0.8.1"
 #ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
 ## Wait new WAL-G release
 #ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
-ARG GOSU_VERSION="1.19"
-ARG ZSTD_VERSION="v1.5.7"
-ARG ZSTD_DOWNLOAD_URL="https://github.com/facebook/zstd/archive/refs/tags"
 
-FROM oraclelinux:${OL_VERSION} AS builder
+FROM ubuntu:${UBUNTU_VERSION} AS builder
 
-ARG LIBSIGAR_DOWNLOAD_URL
-ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
 ARG DISKQUOTA_DOWNLOAD_URL
 ARG DISKQUOTA_VERSION
-ARG ZSTD_VERSION
-ARG ZSTD_DOWNLOAD_URL
 
-# Enable EPEL and Oracle CodeReady repositories
-RUN dnf -y install \
-        oracle-epel-release-el8 \
-        dnf-plugins-core \
-    && dnf config-manager --set-enabled \
-        ol8_codeready_builder \
-        ol8_developer_EPEL \
-    && dnf -y update \
-    && dnf -y install \
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         bison \
         ccache \
         cmake \
@@ -74,85 +50,57 @@ RUN dnf -y install \
         flex \
         git-core \
         gcc \
-        gcc-c++ \
-        gcc-toolset-11-gcc \
-        iputils \
+        g++ \
+        inetutils-ping \
         binutils \
-        krb5-server \
-        krb5-workstation \
-        apr-devel \
-        apr-util-devel \
-        bzip2-devel \
-        libcurl-devel \
-        libevent-devel \
-        krb5-devel \
-        pam-devel \
-        perl-devel \
-        perl-ExtUtils-Embed \
-        readline-devel \
-        openssl-devel \
-        libuv-devel \
-        # Use standard xerces-c-devel package (see comment on the top of the file)
-        xerces-c-devel \
-        libxml2-devel \
-        libyaml-devel \
-        # libzstd-devel \
-        zlib-devel \
-        openldap-devel \
-        libuuid-devel \
-        glibc-langpack-en \
-        glibc-locale-source \
+        krb5-kdc \
+        krb5-admin-server \
+        libaprutil1-dev \
+        libapr1-dev \
+        libbz2-dev \
+        libcurl4-gnutls-dev \
+        libevent-dev \
+        libkrb5-dev \
+        libpam-dev \
+        libperl-dev \
+        libreadline-dev \
+        libssl-dev \
+        libuv1-dev \
+        # Use standard libxerces-c3.2 package (see comment on the top of the file)
+        libxerces-c-dev \
+        libxml2-dev \
+        libyaml-dev \
+        libzstd-dev \
+        zlib1g-dev \
+        libldap-dev \
+        libossp-uuid-dev \
+        krb5-kdc \
+        krb5-admin-server \
+        locales \
         net-tools \
         ninja-build \
-        openssh-clients \
+        openssh-client \
         openssh-server \
         openssl \
-        python2 \
-        python2-devel \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-psutil \
+        python3-pygresql \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-yaml \
+        pkg-config \
+        git \
         sudo \
-        java-17-openjdk-devel \
-        wget \
-        brotli-devel \
-        libsodium-devel \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf \
+        openjdk-17-jdk \
+        libbrotli-dev \
+        libsodium-dev \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
     && echo -e "/usr/local/lib\n/usr/local/lib64\n" >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
-
-# python2.7
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output /tmp/get-pip.py \
-    && python2 /tmp/get-pip.py \
-    && pip2 install \
-        pyyaml==5.3.1 \
-        conan==1.48.2 \
-        psutil==5.9.6 \
-        setuptools==36.6.0 \
-    && ln -s /usr/bin/python2 /usr/bin/python \
-    && rm -rf /tmp/get-pip.py
-
-# zstd (for static library)
-RUN wget ${ZSTD_DOWNLOAD_URL}/${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSION}.tar.gz \
-    && mkdir -p /tmp/zstd \
-    && tar -xzf /tmp/zstd-${ZSTD_VERSION}.tar.gz --strip-components=1 -C /tmp/zstd \
-    && cd /tmp/zstd \
-    && make -j2 \
-    && make install prefix=/usr/local \
-    && ldconfig \
-    && rm -rf \
-        /tmp/zstd \
-        /tmp/zstd-${ZSTD_VERSION}.tar.gz
-
-# libsigar
-RUN git clone ${LIBSIGAR_DOWNLOAD_URL} /tmp/sigar \
-    && cd /tmp/sigar \
-    && git checkout ${LIBSIGAR_COMMIT_HASH} \
-    && mkdir -p /tmp/sigar/build \
-    && cd /tmp/sigar/build \
-    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. \
-    && make -j2 \
-    && make install \
-    && ldconfig \
-    && rm -rf /tmp/sigar
 
 # greengage
 RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION}.tar.gz \
@@ -160,10 +108,8 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
     && tar -xzf /tmp/gpdb-${GPDB_VERSION}.tar.gz --strip-components=1 -C /tmp/gpdb \
     && cd /tmp/gpdb \
     && echo "${GPDB_VERSION} build dev" > /tmp/gpdb/VERSION \
-    && PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}" \
-        ./configure --prefix=/usr/local/greenplum-db \
+    && ./configure --prefix=/usr/local/greenplum-db \
         --enable-ic-proxy \
-        --enable-gpperfmon \
         --with-openssl \
         --with-perl \
         --with-python \
@@ -173,6 +119,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         --with-gssapi \
         --with-pythonsrc-ext \
         --with-uuid=e2fs \
+        --enable-gpfdist \
     && make -j2 \
     && make install \
     # Create symlink greenplum_path.sh -> greengage_path.sh
@@ -213,14 +160,8 @@ ARG PXF_VERSION
 #ARG WALG_VERSION
 
 RUN mkdir -p /opt/go \
-    && arch="$(uname -m)" \
-    && case "${arch}" in \
-        aarch64) dpkgArch='arm64' ;; \
-        x86_64) dpkgArch='amd64' ;; \
-        *) echo >&2 "error: unknown/unsupported architecture '${arch}'"; exit 1 ;; \
-    esac \
-    && wget https://go.dev/dl/go${GOLANG_VERSION}.linux-${dpkgArch}.tar.gz \
-    && tar -xvf go${GOLANG_VERSION}.linux-${dpkgArch}.tar.gz -C /usr/local
+    && wget https://go.dev/dl/go${GOLANG_VERSION}.linux-$(dpkg --print-architecture).tar.gz \
+    && tar -xvf go${GOLANG_VERSION}.linux-$(dpkg --print-architecture).tar.gz -C /usr/local
 
 ENV PATH="$PATH:/usr/local/go/bin"
 ENV GOPATH=/opt/go
@@ -263,8 +204,7 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
 
 # pxf
 # Build pxf without tests
-# Components: external-table, cli, server
-# fdw extension is not needed for gpdb 6
+# Components: external-table, fdw, cli, servers
 RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.tar.gz \
     && mkdir -p /tmp/pxf \
     && tar -xzf /tmp/pxf-${PXF_VERSION}.tar.gz --strip-components=1 -C /tmp/pxf \
@@ -274,6 +214,9 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
        make -j2 -C external-table install \
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
+       make -j2 -C fdw install \
+    && PXF_HOME=/usr/local/pxf \
+       PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
        make -j2 -C cli install \
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
@@ -281,12 +224,12 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
     && rm -rf \
         /tmp/pxf \
         /tmp/pxf-${PXF_VERSION}.tar.gz
+        
 
-FROM oraclelinux:${OL_VERSION} AS final
+FROM ubuntu:${UBUNTU_VERSION} AS final
 
 ARG REPO_BUILD_TAG
 ARG GPDB_VERSION
-ARG GOSU_VERSION
 
 ENV TZ="Etc/UTC" \
     GREENPLUM_USER="gpadmin" \
@@ -302,38 +245,31 @@ ENV TZ="Etc/UTC" \
     GREENPLUM_PXF_ENABLE="false" \
     GREENPLUM_WALG_ENABLE="false"
 
-# Install runtime dependencies
-RUN dnf -y install \
-        oracle-epel-release-el8 \
-        dnf-plugins-core \
-    && dnf config-manager --set-enabled \
-        ol8_codeready_builder \
-        ol8_developer_EPEL \
-    && dnf -y update \
-    && dnf -y install \
-        apr \
-        apr-util \
-        bzip2-libs \
-        libcurl \
-        libevent \
-        krb5-libs \
-        pam \
-        readline \
-        openssl-libs \
-        libuv \
-        # Use standard xerces-c package (see comment on the top of the file)
-        xerces-c \
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        libapr1 \
+        libaprutil1 \
+        libbz2-1.0 \
+        libcurl3-gnutls \
+        libcurl4 \
+        libevent-2.1-7 \
+        libkrb5-3 \
+        libpam0g \
+        libreadline8 \
+        libssl3 \
+        libuv1 \
+        # Use standard libxerces-c3.2 package (see comment on the top of the file)
+        libxerces-c3.2 \
         libxml2 \
-        libyaml \
-        # It's enough to have only shared library for zstd at runtime
-        libzstd \
-        zlib \
-        openldap \
-        iputils \
-        krb5-server \
-        krb5-workstation \
-        libuuid \
-        openssh-clients \
+        libyaml-0-2 \
+        libzstd1 \
+        zlib1g \
+        libldap-2.5-0 \
+        inetutils-ping \
+        krb5-kdc \
+        krb5-admin-server \
+        uuid-runtime \
+        openssh-client \
         openssh-server \
         openssl \
         binutils \
@@ -345,51 +281,38 @@ RUN dnf -y install \
         zip \
         net-tools \
         less \
-        glibc-langpack-en \
-        glibc-locale-source \
-        iproute \
-        python2 \
-        sudo \
-        wget \
-        hostname \
+        locales \
+        iproute2 \
+        libcurl3-gnutls \
+        python3 \
+        python3-psutil \
+        python3-pygresql \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-yaml \
+        gosu \
         ca-certificates \
         tzdata \
-        java-17-openjdk-headless \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
-
-# Grab gosu for easy step-down from root
-# https://github.com/tianon/gosu/releases
-# https://github.com/tianon/gosu/blob/master/INSTALL.md
-RUN arch="$(uname -m)" \
-    && case "${arch}" in \
-            aarch64) dpkgArch='arm64' ;; \
-            x86_64) dpkgArch='amd64' ;; \
-            *) echo >&2 "error: unknown/unsupported architecture '${arch}'"; exit 1 ;; \
-        esac \
-    && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}" \
-    && wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${dpkgArch}.asc" \
-    # Verify the signature
-    && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-    && gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
-    && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc \
-    && chmod +x /usr/local/bin/gosu \
-    # Verify that the binary works
-    && gosu --version \
-    && gosu nobody true
+        openjdk-17-jre \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
     && useradd --shell /bin/bash --uid ${GREENPLUM_UID} --gid ${GREENPLUM_GID} -m ${GREENPLUM_USER} \
-    && localedef -i en_US -f UTF-8 en_US.UTF-8 \
+    && locale-gen en_US.UTF-8 \
     && mkdir -m 700 -p /home/${GREENPLUM_USER}/.ssh \
     && ssh-keygen -f /home/${GREENPLUM_USER}/.ssh/id_rsa -t rsa -N "" \
     && echo "HostKeyAlgorithms +ssh-rsa" >> /etc/ssh/sshd_config \
     && echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> /etc/ssh/sshd_config \
     && echo "${GREENPLUM_USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
     && echo "source /usr/local/greenplum-db/greenplum_path.sh" > /home/${GREENPLUM_USER}/.bashrc \
-    && echo "export JAVA_HOME=/usr/lib/jvm/jre-17-openjdk" >> /home/${GREENPLUM_USER}/.bashrc \
+    && ARCH=$(dpkg --print-architecture) \
+    && case "${ARCH}" in \
+        arm64) echo "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64" >> /home/${GREENPLUM_USER}/.bashrc ;; \
+        amd64) echo "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> /home/${GREENPLUM_USER}/.bashrc ;; \
+        *) echo >&2 "error: unknown/unsupported architecture '${ARCH}'"; exit 1 ;; \
+    esac \
     && echo 'export PATH="/usr/local/pxf/bin:${PATH}"' >> /home/${GREENPLUM_USER}/.bashrc \
     && echo "export PXF_BASE=${GREENPLUM_DATA_DIRECTORY}/pxf" >> /home/${GREENPLUM_USER}/.bashrc \
     && mkdir -p ${GREENPLUM_DATA_DIRECTORY} \
@@ -399,15 +322,11 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
         /home/${GREENPLUM_USER}/ \
         ${GREENPLUM_DATA_DIRECTORY} \
         /docker-entrypoint-initdb.d \
-    && ln -s /usr/bin/python2 /usr/bin/python \
     && unlink /etc/localtime \
     && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo "${TZ}" > /etc/timezone
 
 COPY --from=go_builder /usr/local/greenplum-db /usr/local/greenplum-db
-COPY --from=builder \
-    /usr/local/lib/libsigar.so \
-    /usr/local/greenplum-db/lib/
 COPY --from=go_builder \
     /opt/go/bin/gpbackup \
     /opt/go/bin/gprestore \
