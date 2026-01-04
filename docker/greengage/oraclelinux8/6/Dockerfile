@@ -44,7 +44,7 @@ ARG GPBACKMAN_VERSION="v0.8.1"
 ## Wait new WAL-G release
 #ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
 ARG GOSU_VERSION="1.19"
-ARG ZSTD_VERSION="v1.5.7"
+ARG ZSTD_VERSION="1.5.7"
 ARG ZSTD_DOWNLOAD_URL="https://github.com/facebook/zstd/archive/refs/tags"
 
 FROM oraclelinux:${OL_VERSION} AS builder
@@ -131,7 +131,7 @@ RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output /tmp/get-pip.py \
     && rm -rf /tmp/get-pip.py
 
 # zstd (for static library)
-RUN wget ${ZSTD_DOWNLOAD_URL}/${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSION}.tar.gz \
+RUN wget ${ZSTD_DOWNLOAD_URL}/v${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSION}.tar.gz \
     && mkdir -p /tmp/zstd \
     && tar -xzf /tmp/zstd-${ZSTD_VERSION}.tar.gz --strip-components=1 -C /tmp/zstd \
     && cd /tmp/zstd \

@@ -224,7 +224,6 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
     && rm -rf \
         /tmp/pxf \
         /tmp/pxf-${PXF_VERSION}.tar.gz
-        
 
 FROM ubuntu:${UBUNTU_VERSION} AS final
 
