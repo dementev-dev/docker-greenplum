@@ -1,13 +1,13 @@
 # Differences from the vanilla Greenplum image
 # ----
-# Start from greengage 6.28.1 the dependence of patched xerces is removed.
-# So we can use the standard xerces-c package
+# Greengage 7 uses standard xerces-c package (no patched version needed)
 # See https://github.com/GreengageDB/greengage/commit/431a01f4394461092842718aa7c37a0a98e2bfaa
 # and https://github.com/GreengageDB/greengage/commit/dff485b8f1e1e4ebe771de9a3ba93af42c7624d1
-# The build step for patched xerces has been removed for greengage, unlike the vanilla greenplum.
 # ----
 # PXF requires Java 17
 # See https://github.com/GreengageDB/pxf/commit/1a873abd57983bf658822cb9b02a11b011116812
+# ----
+# Greengage 7 uses Python 3 (unlike Greengage 6 which used Python 2)
 # ----
 # Wal-G currently disabled
 # ----
@@ -20,10 +20,8 @@
 ARG REPO_BUILD_TAG
 ARG OL_VERSION="8"
 ARG GOLANG_VERSION="1.24.11"
-ARG LIBSIGAR_DOWNLOAD_URL="https://github.com/boundary/sigar"
-ARG LIBSIGAR_COMMIT_HASH="e8961a6674cc4d292e61b353b5c36bfc345434cc"
 ARG GPDB_DOWNLOAD_URL="https://github.com/GreengageDB/greengage/archive/refs/tags"
-ARG GPDB_VERSION="6.29.2"
+ARG GPDB_VERSION="7.4.1"
 # There is no fresh release of diskquota in GreengageDB repo, use Arenadata's fork
 # When new release will be available, switch to GreengageDB repo
 ARG DISKQUOTA_DOWNLOAD_URL="https://github.com/arenadata/diskquota/archive/refs/tags"
@@ -49,8 +47,6 @@ ARG ZSTD_DOWNLOAD_URL="https://github.com/facebook/zstd/archive/refs/tags"
 
 FROM oraclelinux:${OL_VERSION} AS builder
 
-ARG LIBSIGAR_DOWNLOAD_URL
-ARG LIBSIGAR_COMMIT_HASH
 ARG GPDB_DOWNLOAD_URL
 ARG GPDB_VERSION
 ARG DISKQUOTA_DOWNLOAD_URL
@@ -107,8 +103,13 @@ RUN dnf -y install \
         openssh-clients \
         openssh-server \
         openssl \
-        python2 \
-        python2-devel \
+        python3 \
+        python3-devel \
+        python3-pip \
+        python3-psutil \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-pyyaml \
         sudo \
         java-17-openjdk-devel \
         wget \
@@ -118,17 +119,6 @@ RUN dnf -y install \
     && rm -rf /var/cache/dnf \
     && echo -e "/usr/local/lib\n/usr/local/lib64\n" >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
-
-# python2.7
-RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output /tmp/get-pip.py \
-    && python2 /tmp/get-pip.py \
-    && pip2 install \
-        pyyaml==5.3.1 \
-        conan==1.48.2 \
-        psutil==5.9.6 \
-        setuptools==36.6.0 \
-    && ln -s /usr/bin/python2 /usr/bin/python \
-    && rm -rf /tmp/get-pip.py
 
 # zstd (for static library)
 RUN wget ${ZSTD_DOWNLOAD_URL}/v${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSION}.tar.gz \
@@ -142,18 +132,6 @@ RUN wget ${ZSTD_DOWNLOAD_URL}/v${ZSTD_VERSION}.tar.gz -O /tmp/zstd-${ZSTD_VERSIO
         /tmp/zstd \
         /tmp/zstd-${ZSTD_VERSION}.tar.gz
 
-# libsigar
-RUN git clone ${LIBSIGAR_DOWNLOAD_URL} /tmp/sigar \
-    && cd /tmp/sigar \
-    && git checkout ${LIBSIGAR_COMMIT_HASH} \
-    && mkdir -p /tmp/sigar/build \
-    && cd /tmp/sigar/build \
-    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local .. \
-    && make -j2 \
-    && make install \
-    && ldconfig \
-    && rm -rf /tmp/sigar
-
 # greengage
 RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION}.tar.gz \
     && mkdir -p /tmp/gpdb \
@@ -163,7 +141,6 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
     && PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}" \
         ./configure --prefix=/usr/local/greenplum-db \
         --enable-ic-proxy \
-        --enable-gpperfmon \
         --with-openssl \
         --with-perl \
         --with-python \
@@ -173,6 +150,7 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
         --with-gssapi \
         --with-pythonsrc-ext \
         --with-uuid=e2fs \
+        --enable-gpfdist \
     && make -j2 \
     && make install \
     # Create symlink greenplum_path.sh -> greengage_path.sh
@@ -183,6 +161,10 @@ RUN wget ${GPDB_DOWNLOAD_URL}/${GPDB_VERSION}.tar.gz -O /tmp/gpdb-${GPDB_VERSION
     && rm -rf \
         /tmp/gpdb \
         /tmp/gpdb-${GPDB_VERSION}.tar.gz
+
+# Now install PyGreSQL after Greenplum is copied
+# No available in EPEL
+RUN PATH=${PATH}:/usr/local/greenplum-db/bin pip3 install --no-cache-dir PyGreSQL
 
 # diskquota
 RUN wget ${DISKQUOTA_DOWNLOAD_URL}/${DISKQUOTA_VERSION}.tar.gz -O /tmp/diskquota-${DISKQUOTA_VERSION}.tar.gz \
@@ -263,8 +245,7 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
 
 # pxf
 # Build pxf without tests
-# Components: external-table, cli, server
-# fdw extension is not needed for gpdb 6
+# Components: external-table, fdw, cli, servers
 RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.tar.gz \
     && mkdir -p /tmp/pxf \
     && tar -xzf /tmp/pxf-${PXF_VERSION}.tar.gz --strip-components=1 -C /tmp/pxf \
@@ -272,6 +253,9 @@ RUN wget ${PXF_DOWNLOAD_URL}/${PXF_VERSION}.tar.gz -O /tmp/pxf-${PXF_VERSION}.ta
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
        make -j2 -C external-table install \
+    && PXF_HOME=/usr/local/pxf \
+       PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
+       make -j2 -C fdw install \
     && PXF_HOME=/usr/local/pxf \
        PG_CONFIG=/usr/local/greenplum-db/bin/pg_config \
        make -j2 -C cli install \
@@ -348,7 +332,12 @@ RUN dnf -y install \
         glibc-langpack-en \
         glibc-locale-source \
         iproute \
-        python2 \
+        python3 \
+        python3-pip \
+        python3-psutil \
+        python3-psycopg2 \
+        python3-setuptools \
+        python3-pyyaml \
         sudo \
         wget \
         hostname \
@@ -399,15 +388,22 @@ RUN groupadd --gid ${GREENPLUM_GID} ${GREENPLUM_GROUP} \
         /home/${GREENPLUM_USER}/ \
         ${GREENPLUM_DATA_DIRECTORY} \
         /docker-entrypoint-initdb.d \
-    && ln -s /usr/bin/python2 /usr/bin/python \
     && unlink /etc/localtime \
     && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo "${TZ}" > /etc/timezone
 
 COPY --from=go_builder /usr/local/greenplum-db /usr/local/greenplum-db
 COPY --from=builder \
-    /usr/local/lib/libsigar.so \
+    /usr/lib64/libxerces-c*.so* \
     /usr/local/greenplum-db/lib/
+
+# Install PyGreSQL
+RUN dnf -y install gcc python3-devel \
+    && PATH=${PATH}:/usr/local/greenplum-db/bin pip3 install --no-cache-dir PyGreSQL \
+    && dnf -y remove gcc python3-devel \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
 COPY --from=go_builder \
     /opt/go/bin/gpbackup \
     /opt/go/bin/gprestore \

@@ -4,6 +4,8 @@ GPDB_7_VERSIONS = 7.1.0
 TAG_GPDB_7 ?= 7.1.0
 GREENGAGE_6_VERSIONS = 6.29.2
 TAG_GREENGAGE_6 ?= 6.29.2
+GREENGAGE_7_VERSIONS = 7.4.1
+TAG_GREENGAGE_7 ?= 7.4.1
 UBUNTU_OS_VERSION = ubuntu22.04
 OL_OS_VERSION = oraclelinux8
 UID := $(shell id -u)
@@ -42,6 +44,14 @@ build_greengage_6_ubuntu:
 .PHONY: build_greengage_6_oraclelinux
 build_greengage_6_oraclelinux:
 	$(call build_greengage_image_with_tag,6,$(TAG_GREENGAGE_6),$(OL_OS_VERSION))
+
+.PHONY: build_greengage_7_ubuntu
+build_greengage_7_ubuntu:
+	$(call build_greengage_image_with_tag,7,$(TAG_GREENGAGE_7),$(UBUNTU_OS_VERSION))
+
+.PHONY: build_greengage_7_oraclelinux
+build_greengage_7_oraclelinux:
+	$(call build_greengage_image_with_tag,7,$(TAG_GREENGAGE_7),$(OL_OS_VERSION))
 
 .PHONY: test-e2e
 test-e2e:
