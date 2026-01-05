@@ -210,8 +210,7 @@ RUN git clone ${WALG_DOWNLOAD_URL} /tmp/wal-g \
        make deps \
     && USE_BROTLI=1 \
        USE_LIBSODIUM=1 \
-       make gp_build \
-    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
+       make gp_build
 
 # pxf
 # Build pxf without tests

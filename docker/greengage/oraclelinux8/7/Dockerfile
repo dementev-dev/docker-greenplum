@@ -38,6 +38,7 @@ ARG GPBACKMAN_DOWNLOAD_URL="https://github.com/woblerr/gpbackman/archive/refs/ta
 ARG GPBACKMAN_VERSION="v0.8.1"
 # Greengage use pgBackRest fork for physical backups.
 # It is not clear whether wal-g will work correctly.
+# Will be error like: "unknown flavor: PostgreSQL ... (Greengage Database ... build dev)"
 #ARG WALG_DOWNLOAD_URL="https://github.com/wal-g/wal-g"
 ## Wait new WAL-G release
 #ARG WALG_VERSION="4b33c88939ce0cc23acc5f89dcf5e427c50923d9"
@@ -240,8 +241,7 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
 #       make deps \
 #    && USE_BROTLI=1 \
 #       USE_LIBSODIUM=1 \
-#       make gp_build \
-#    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
+#       make gp_build
 
 # pxf
 # Build pxf without tests
