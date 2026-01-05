@@ -240,8 +240,7 @@ RUN wget ${GPBACKMAN_DOWNLOAD_URL}/${GPBACKMAN_VERSION}.tar.gz -O /tmp/gpbackman
 #       make deps \
 #    && USE_BROTLI=1 \
 #       USE_LIBSODIUM=1 \
-#       make gp_build \
-#    && rm -rf /tmp/wal-g-${WALG_VERSION}.tar.gz
+#       make gp_build
 
 # pxf
 # Build pxf without tests
